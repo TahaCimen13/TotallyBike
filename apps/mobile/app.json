@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "TotallyBike",
+    "slug": "totallybike",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "totallybike",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Bisiklet QR kodlarını taramak için kamera izni gereklidir."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Yakınındaki bisiklet istasyonlarını göstermek için konum izni gereklidir."
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pisi.totallybike"
+    },
+    "android": {
+      "package": "com.pisi.totallybike",
+      "adaptiveIcon": {
+        "backgroundColor": "#10b981"
+      }
+    }
+  }
+}

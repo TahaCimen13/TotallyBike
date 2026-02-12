@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  balance   Float    @default(0)
+  rides     Ride[]
+  createdAt DateTime @default(now())
+}
+
+model Station {
+  id         String @id @default(cuid())
+  name       String
+  latitude   Float
+  longitude  Float
+  totalSlots Int
+  bikes      Bike[]
+  ridesStart Ride[] @relation("startStation")
+  ridesEnd   Ride[] @relation("endStation")
+}
+
+model Bike {
+  id           String   @id @default(cuid())
+  qrCode       String   @unique
+  batteryLevel Int      @default(100)
+  status       String   @default("available")
+  stationId    String?
+  station      Station? @relation(fields: [stationId], references: [id])
+  rides        Ride[]
+}
+
+model Ride {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  bikeId         String
+  bike           Bike      @relation(fields: [bikeId], references: [id])
+  startStationId String
+  startStation   Station   @relation("startStation", fields: [startStationId], references: [id])
+  endStationId   String?
+  endStation     Station?  @relation("endStation", fields: [endStationId], references: [id])
+  startTime      DateTime  @default(now())
+  endTime        DateTime?
+  cost           Float     @default(0)
+  status         String    @default("active")
+}

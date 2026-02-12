@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PISI BikeApp - İstasyon Simülasyonu</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 150, 255, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            padding: 15px 20px;
+            border-radius: 16px;
+            font-size: 14px;
+            z-index: 100;
+            box-shadow: 0 4px 16px 0 rgba(0, 100, 200, 0.2);
+            text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.1);
+            font-weight: 500;
+        }
+        #stats {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0, 200, 100, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 200, 100, 0.3);
+            padding: 15px 20px;
+            border-radius: 16px;
+            font-size: 13px;
+            z-index: 100;
+            box-shadow: 0 4px 16px 0 rgba(0, 150, 100, 0.2);
+        }
+        
+        #phone-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 380px;
+            height: 750px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-radius: 40px;
+            padding: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+        
+        #phone-container.active {
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: all;
+        }
+        
+        #phone-screen {
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            border-radius: 30px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #phone-header {
+            background: linear-gradient(135deg, #0096FF 0%, #00D4FF 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 150, 255, 0.3);
+        }
+        
+        #phone-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        #balance-display {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        #phone-content {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: #f5f5f5;
+        }
+        
+        #map-container {
+            flex: 1;
+            background: #e8f4f8;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #map-canvas {
+            width: 100%;
+            height: 100%;
+            background: #e8f4f8;
+        }
+        
+        .map-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            z-index: 10;
+        }
+        
+        .map-marker:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+        
+        .station-marker {
+            background: white;
+            border: 2px solid #0096FF;
+            border-radius: 8px;
+            padding: 4px 6px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            font-size: 9px;
+            font-weight: 600;
+            min-width: 40px;
+        }
+
+        .station-marker.selected {
+            border-color: #00CC66;
+            background: #f0fff4;
+        }
+
+        .station-icon {
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .station-name {
+            color: #0096FF;
+            font-size: 8px;
+            margin-top: 4px;
+        }
+        
+        .bike-marker {
+            font-size: 24px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+        
+        .user-marker {
+            background: #FF6B6B;
+            border: 4px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: pulse-user 2s infinite;
+        }
+        
+        @keyframes pulse-user {
+            0%, 100% { 
+                box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+            50% { 
+                box-shadow: 0 0 0 8px rgba(255, 107, 107, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+        }
+        
+        #station-detail {
+            background: white;
+            padding: 12px 15px;
+            border-top: 2px solid #0096FF;
+            display: none;
+        }
+
+        #station-detail.active {
+            display: block;
+        }
+
+        #bike-detail {
+            background: white;
+            padding: 12px 15px;
+            border-top: 2px solid #00CC66;
+            display: none;
+        }
+
+        #bike-detail.active {
+            display: block;
+        }
+
+        #ride-info {
+            background: white;
+            padding: 12px 15px;
+            border-top: 2px solid #00CC66;
+            display: none;
+        }
+
+        #ride-info.active {
+            display: block;
+        }
+        
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .detail-stats {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-box {
+            flex: 1;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0096FF;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .close-detail {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        #bottom-panel {
+            background: white;
+            padding: 12px 15px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        #scan-button {
+            width: 100%;
+            background: linear-gradient(135deg, #00CC66 0%, #00D4AA 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        #scan-button:hover {
+            transform: scale(1.02);
+        }
+        
+        #scan-button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .bottom-tabs {
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+        }
+        
+        .tab-button {
+            flex: 1;
+            background: #f5f5f5;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tab-button.active {
+            background: linear-gradient(135deg, #0096FF 0%, #00D4FF 100%);
+            color: white;
+        }
+        
+        #payment-panel {
+            display: none;
+            padding: 15px;
+            background: white;
+            border-radius: 15px;
+            margin: 10px;
+        }
+        
+        #payment-panel.active {
+            display: block;
+        }
+        
+        .payment-method {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .add-payment-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #0096FF 0%, #00D4FF 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        #scan-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 204, 102, 0.95);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            display: none;
+            z-index: 1001;
+        }
+
+        #scan-indicator.success {
+            background: rgba(0, 204, 102, 0.95);
+        }
+
+        #scan-indicator.error {
+            background: rgba(255, 59, 48, 0.95);
+        }
+        
+        #interact-prompt {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            padding: 25px 40px;
+            border-radius: 20px;
+            font-size: 24px;
+            font-weight: 700;
+            display: none;
+            z-index: 500;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            line-height: 1.6;
+            animation: pulse-prompt 2s infinite;
+        }
+        
+        @keyframes pulse-prompt {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.05);
+                box-shadow: 0 12px 40px rgba(0, 150, 255, 0.6);
+            }
+        }
+        
+        #interact-prompt .key {
+            display: inline-block;
+            background: linear-gradient(135deg, #0096FF 0%, #00D4FF 100%);
+            padding: 10px 20px;
+            border-radius: 12px;
+            margin: 0 10px;
+            font-size: 32px;
+            font-weight: 900;
+            box-shadow: 0 4px 16px rgba(0, 150, 255, 0.5);
+            letter-spacing: 2px;
+        }
+        
+        #interact-prompt .park {
+            background: linear-gradient(135deg, #00CC66 0%, #00D4AA 100%);
+            box-shadow: 0 4px 16px rgba(0, 200, 100, 0.5);
+        }
+        
+        #phone-close {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        
+        #phone-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            text-align: center;
+            animation: fadeIn 0.8s ease-in;
+        }
+        
+        #loading::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 60px;
+            margin: 20px auto 0;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-top-color: rgba(0, 150, 255, 0.8);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        #handlebar-view {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            pointer-events: none;
+            opacity: 0.85;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -40%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">🚲 PISI BikeApp</div>
+        WASD/Yön Tuşları: Hareket<br>
+        Mouse: Kamera<br>
+        E: Telefon / İşlemler<br>
+        Space: Zıpla<br>
+        Shift: Koş
+    </div>
+    <div id="stats">
+        <div style="font-weight: 600; margin-bottom: 5px;">İstasyon Durumu</div>
+        <div id="station-info">Yükleniyor...</div>
+    </div>
+    
+    <div id="phone-container">
+        <button id="phone-close">✕</button>
+        <div id="phone-screen">
+            <div id="phone-header">
+                <h2>🚲 PISI</h2>
+                <div id="balance-display">💳 45.00 TL</div>
+            </div>
+            <div id="phone-content">
+                <div id="map-container">
+                    <canvas id="map-canvas"></canvas>
+                    <div id="station1-marker" class="map-marker station-marker" onclick="selectStation(1)">
+                        <div class="station-icon">🅿️</div>
+                        <div class="station-name">Kuzey</div>
+                        <div id="station1-count" style="font-size: 10px; color: #00CC66; font-weight: 700;">5/8</div>
+                    </div>
+                    <div id="station2-marker" class="map-marker station-marker" onclick="selectStation(2)">
+                        <div class="station-icon">🅿️</div>
+                        <div class="station-name">Batı</div>
+                        <div id="station2-count" style="font-size: 10px; color: #00CC66; font-weight: 700;">4/6</div>
+                    </div>
+                    <div id="station3-marker" class="map-marker station-marker" onclick="selectStation(3)">
+                        <div class="station-icon">🅿️</div>
+                        <div class="station-name">Doğu</div>
+                        <div id="station3-count" style="font-size: 10px; color: #00CC66; font-weight: 700;">3/6</div>
+                    </div>
+                    <div id="station4-marker" class="map-marker station-marker" onclick="selectStation(4)">
+                        <div class="station-icon">🅿️</div>
+                        <div class="station-name">Güney</div>
+                        <div id="station4-count" style="font-size: 10px; color: #00CC66; font-weight: 700;">6/8</div>
+                    </div>
+                    <div class="map-marker user-marker" id="user-position"></div>
+                </div>
+                
+                <div id="station-detail">
+                    <div class="detail-header">
+                        <h3 style="margin: 0; color: #0096FF;" id="detail-title">İstasyon 1</h3>
+                        <button class="close-detail" onclick="closeStationDetail()">✕</button>
+                    </div>
+                    <div class="detail-stats">
+                        <div class="stat-box" style="background: #e6f7ed;">
+                            <div class="stat-number" style="color: #00CC66;" id="detail-occupied">6</div>
+                            <div class="stat-label">Mevcut Bisiklet</div>
+                        </div>
+                        <div class="stat-box" style="background: #fff3e6;">
+                            <div class="stat-number" style="color: #FF9500;" id="detail-available">4</div>
+                            <div class="stat-label">Boş Park Yeri</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: #666; text-align: center;">
+                        📍 Mesafe: <strong id="detail-distance">--m</strong>
+                    </div>
+                </div>
+
+                <div id="bike-detail">
+                    <div class="detail-header">
+                        <h3 style="margin: 0; color: #00CC66;">🚲 Bisiklet Detayları</h3>
+                        <button class="close-detail" onclick="closeBikeDetail()">✕</button>
+                    </div>
+                    <div style="text-align: center; margin: 15px 0;">
+                        <div style="font-size: 14px; color: #666; margin-bottom: 5px;">Bisiklet ID</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #0096FF;" id="bike-detail-id">#0000</div>
+                    </div>
+                    <div class="detail-stats">
+                        <div class="stat-box" style="background: #e6f7ed;">
+                            <div class="stat-number" style="color: #00CC66;" id="bike-battery">95%</div>
+                            <div class="stat-label">🔋 Batarya</div>
+                        </div>
+                        <div class="stat-box" style="background: #e6f4ff;">
+                            <div class="stat-number" style="color: #0096FF;" id="bike-distance">--m</div>
+                            <div class="stat-label">📍 Mesafe</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: #666; text-align: center; margin-top: 10px;">
+                        ⚡ Elektrikli Bisiklet<br>
+                        💰 Kiralama: 5.00 TL
+                    </div>
+                </div>
+
+                <div id="ride-info">
+                    <div class="detail-header">
+                        <h3 style="margin: 0; color: #00CC66;" id="ride-info-title">🚴 Sürüş Bilgileri</h3>
+                        <button class="close-detail" onclick="closeRideInfo()">✕</button>
+                    </div>
+                    <div style="text-align: center; margin: 15px 0;">
+                        <div style="font-size: 14px; color: #666; margin-bottom: 5px;">Bisiklet ID</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #0096FF;" id="ride-bike-id">#0000</div>
+                    </div>
+                    <div class="detail-stats">
+                        <div class="stat-box" style="background: #e6f7ed;">
+                            <div class="stat-number" style="color: #00CC66;" id="ride-battery">95%</div>
+                            <div class="stat-label">🔋 Batarya</div>
+                        </div>
+                        <div class="stat-box" style="background: #fff3e6;">
+                            <div class="stat-number" style="color: #FF9500;" id="ride-duration">0:00</div>
+                            <div class="stat-label">⏱️ Süre</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; padding: 12px; background: #f5f5f5; border-radius: 10px;">
+                        <div style="font-size: 13px; color: #666; margin-bottom: 8px;">
+                            💰 Şu Anki Ücret: <strong style="color: #FF9500;" id="ride-cost">5.00 TL</strong>
+                        </div>
+                        <div style="font-size: 12px; color: #999;">
+                            İlk 15 dk: 5 TL, sonrası dakika başı 0.50 TL
+                        </div>
+                    </div>
+                    <div id="station-nearby-info" style="display: none; margin-top: 15px; padding: 12px; background: #e6f7ed; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 14px; color: #00CC66; font-weight: 600; margin-bottom: 5px;">
+                            ✓ İstasyon <span id="nearby-station-num">1</span> Yakınındasınız
+                        </div>
+                        <div style="font-size: 12px; color: #666;">
+                            Bisikleti park edebilirsiniz
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="payment-panel">
+                    <h3 style="margin: 0 0 15px 0; color: #0096FF;">💳 Ödeme Yöntemleri</h3>
+                    
+                    <div class="payment-method">
+                        <div>
+                            <div style="font-weight: 600;">💳 Kredi Kartı</div>
+                            <div style="font-size: 12px; color: #666;">**** **** **** 4532</div>
+                        </div>
+                        <div style="color: #00CC66; font-weight: 600;">✓</div>
+                    </div>
+                    
+                    <div class="payment-method">
+                        <div>
+                            <div style="font-weight: 600;">💰 PISI Cüzdan</div>
+                            <div style="font-size: 12px; color: #666;">Bakiye: 45.00 TL</div>
+                        </div>
+                    </div>
+                    
+                    <button class="add-payment-btn" onclick="addPayment()">
+                        + Yeni Ödeme Yöntemi Ekle
+                    </button>
+                    
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                        <h4 style="margin: 0 0 10px 0;">📊 Kullanım Geçmişi</h4>
+                        <div style="font-size: 14px; color: #666;">
+                            <div style="margin-bottom: 8px;">🚲 Son Kullanım: 2 saat önce</div>
+                            <div style="margin-bottom: 8px;">⚡ Toplam Mesafe: 47.3 km</div>
+                            <div>💵 Bu Ay Harcanan: 89.50 TL</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="bottom-panel">
+                    <button id="scan-button" onclick="startScanning()">
+                        📷 Bisiklet QR Kodunu Tara
+                    </button>
+                    <div class="bottom-tabs">
+                        <button class="tab-button active" onclick="showMap()">🗺️ Harita</button>
+                        <button class="tab-button" onclick="showPayment()">💳 Ödeme</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="scan-indicator">
+        QR Kod Taranıyor...
+    </div>
+    
+    <div id="interact-prompt"></div>
+
+    <!-- Bisiklet Gidon Görünümü -->
+    <div id="handlebar-view" style="display: none;">
+        <svg viewBox="0 0 400 200" style="width: 600px; height: 300px;">
+            <!-- Gidon çubuğu -->
+            <line x1="50" y1="80" x2="350" y2="80" stroke="#00CC66" stroke-width="8" stroke-linecap="round"/>
+
+            <!-- Sol tutamak -->
+            <rect x="30" y="70" width="30" height="20" rx="5" fill="#222"/>
+
+            <!-- Sağ tutamak -->
+            <rect x="340" y="70" width="30" height="20" rx="5" fill="#222"/>
+
+            <!-- Orta bağlantı -->
+            <line x1="200" y1="80" x2="200" y2="130" stroke="#00CC66" stroke-width="6"/>
+            <circle cx="200" cy="130" r="8" fill="#00CC66"/>
+
+            <!-- Ön teker -->
+            <circle cx="200" cy="170" r="25" stroke="#333" stroke-width="5" fill="none"/>
+            <circle cx="200" cy="170" r="15" stroke="#333" stroke-width="3" fill="none"/>
+
+            <!-- Batarya LED -->
+            <circle cx="200" cy="60" r="5" fill="#00ff00" opacity="0.8">
+                <animate attributeName="opacity" values="0.8;1;0.8" dur="1s" repeatCount="indefinite"/>
+            </circle>
+        </svg>
+    </div>
+
+    <div id="loading">
+        PISI BikeApp<br>
+        <span style="font-size: 14px; opacity: 0.7;">İstasyonlar Hazırlanıyor...</span>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 120);
+        scene.background = new THREE.Color(0x87CEEB);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 15); // Bina önünde başla
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        // Hide loading message
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+        }, 1000);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -80;
+        directionalLight.shadow.camera.right = 80;
+        directionalLight.shadow.camera.top = 80;
+        directionalLight.shadow.camera.bottom = -80;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 300;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        // Materials
+        const pavementMaterial = new THREE.MeshLambertMaterial({ color: 0x505050 });
+        const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x3a7a3a });
+        const stationFrameMaterial = new THREE.MeshPhongMaterial({
+            color: 0x0096FF,
+            shininess: 80
+        });
+        const displayMaterial = new THREE.MeshPhongMaterial({
+            color: 0x1a1a1a,
+            emissive: 0x00ff00,
+            emissiveIntensity: 0.3
+        });
+        const bikeMaterial = new THREE.MeshPhongMaterial({
+            color: 0x00CC66,
+            shininess: 60
+        });
+        const emptySlotMaterial = new THREE.MeshPhongMaterial({
+            color: 0xff6600,
+            emissive: 0xff4400,
+            emissiveIntensity: 0.2
+        });
+        
+        // Station statistics
+        const stationStats = {
+            station1: { total: 8, occupied: 5, available: 3, name: 'Kuzey İstasyon' },
+            station2: { total: 6, occupied: 4, available: 2, name: 'Batı İstasyon' },
+            station3: { total: 6, occupied: 3, available: 3, name: 'Doğu İstasyon' },
+            station4: { total: 8, occupied: 6, available: 2, name: 'Güney İstasyon' }
+        };
+        
+        // Track all bikes in the scene
+        const allBikes = [];
+        let rentedBike = null;
+        let currentBalance = 45.00;
+        let handlebarView = null; // FPS gidon görünümü için
+
+        // Global station references
+        let station1, station2, station3, station4;
+        let selectedStation = null;
+        let nearbyBikeForRent = null; // Nearby bike that user wants to rent
+        let rideStartTime = null; // When the ride started
+        let rideBattery = 100; // Current ride battery percentage
+
+        // Create FPS handlebar view (gidon görünümü)
+        function createHandlebarView() {
+            const handlebar = new THREE.Group();
+
+            // Gidon çubuğu (yatay bar)
+            const barGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.8, 8);
+            const barMaterial = new THREE.MeshPhongMaterial({ color: 0x00CC66 });
+            const bar = new THREE.Mesh(barGeometry, barMaterial);
+            bar.rotation.z = Math.PI / 2;
+            bar.position.set(0, 0, 0);
+            handlebar.add(bar);
+
+            // Sol tutamak
+            const gripGeometry = new THREE.CylinderGeometry(0.025, 0.025, 0.12, 8);
+            const gripMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            const leftGrip = new THREE.Mesh(gripGeometry, gripMaterial);
+            leftGrip.rotation.z = Math.PI / 2;
+            leftGrip.position.set(-0.4, 0, 0);
+            handlebar.add(leftGrip);
+
+            // Sağ tutamak
+            const rightGrip = new THREE.Mesh(gripGeometry, gripMaterial);
+            rightGrip.rotation.z = Math.PI / 2;
+            rightGrip.position.set(0.4, 0, 0);
+            handlebar.add(rightGrip);
+
+            // Orta direk (kameraya bağlantı)
+            const stemGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8);
+            const stem = new THREE.Mesh(stemGeometry, barMaterial);
+            stem.position.set(0, -0.15, 0);
+            handlebar.add(stem);
+
+            // Ön teker (küçük, uzakta görünür)
+            const wheelGeometry = new THREE.TorusGeometry(0.15, 0.03, 8, 16);
+            const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            wheel.rotation.x = Math.PI / 2;
+            wheel.position.set(0, -0.4, -0.5);
+            handlebar.add(wheel);
+
+            // Yeşil LED (batarya göstergesi)
+            const ledGeometry = new THREE.SphereGeometry(0.02, 8, 8);
+            const ledMaterial = new THREE.MeshPhongMaterial({
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.8
+            });
+            const led = new THREE.Mesh(ledGeometry, ledMaterial);
+            led.position.set(0, 0.05, -0.1);
+            handlebar.add(led);
+
+            return handlebar;
+        }
+        
+        function updateStatsDisplay() {
+            const totalBikes = stationStats.station1.occupied + stationStats.station2.occupied +
+                              stationStats.station3.occupied + stationStats.station4.occupied;
+            const totalSlots = stationStats.station1.total + stationStats.station2.total +
+                              stationStats.station3.total + stationStats.station4.total;
+            const totalAvailable = stationStats.station1.available + stationStats.station2.available +
+                                  stationStats.station3.available + stationStats.station4.available;
+
+            // Sağ üst panel güncelle
+            document.getElementById('station-info').innerHTML = `
+                <div style="margin-bottom: 8px;">
+                    <strong>Toplam:</strong> ${totalBikes} bisiklet mevcut<br>
+                    <strong>Boş Slot:</strong> ${totalAvailable} park yeri
+                </div>
+            `;
+
+            // İstasyon detay panelini güncelle (eğer açıksa)
+            if (selectedStation) {
+                const stats = stationStats['station' + selectedStation];
+                const detailOccupied = document.getElementById('detail-occupied');
+                const detailAvailable = document.getElementById('detail-available');
+                if (detailOccupied) detailOccupied.textContent = stats.occupied;
+                if (detailAvailable) detailAvailable.textContent = stats.available;
+            }
+        }
+        
+        // Create electric bike
+        function createElectricBike(hasBike = true, bikeId = null) {
+            const bike = new THREE.Group();
+            
+            if (!hasBike) {
+                // Empty slot indicator
+                const emptyGeometry = new THREE.CylinderGeometry(0.15, 0.15, 0.05, 16);
+                const empty = new THREE.Mesh(emptyGeometry, emptySlotMaterial);
+                empty.position.y = 0.025;
+                bike.add(empty);
+                
+                // Pulsing light
+                const light = new THREE.PointLight(0xff4400, 0.3, 2);
+                light.position.y = 0.5;
+                bike.add(light);
+                
+                return bike;
+            }
+            
+            // Store bike ID for interaction
+            bike.userData.bikeId = bikeId;
+            bike.userData.isAvailable = true;
+            bike.userData.type = 'bike';
+            
+            // Frame
+            const frameGeometry = new THREE.BoxGeometry(0.05, 0.8, 1.2);
+            const frame = new THREE.Mesh(frameGeometry, bikeMaterial);
+            frame.position.y = 0.6;
+            frame.rotation.x = 0.3;
+            frame.castShadow = true;
+            bike.add(frame);
+            
+            // Handlebar
+            const handlebarGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8);
+            const handlebar = new THREE.Mesh(handlebarGeometry, bikeMaterial);
+            handlebar.position.set(0, 1, -0.5);
+            handlebar.rotation.z = Math.PI / 2;
+            handlebar.castShadow = true;
+            bike.add(handlebar);
+            
+            // QR Code on handlebar
+            const qrCanvas = document.createElement('canvas');
+            qrCanvas.width = 128;
+            qrCanvas.height = 128;
+            const qrCtx = qrCanvas.getContext('2d');
+            qrCtx.fillStyle = '#ffffff';
+            qrCtx.fillRect(0, 0, 128, 128);
+            qrCtx.fillStyle = '#000000';
+            
+            // Simple QR-like pattern
+            const blockSize = 16;
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (Math.random() > 0.5 || (i < 3 && j < 3) || (i > 4 && j < 3) || (i < 3 && j > 4)) {
+                        qrCtx.fillRect(i * blockSize, j * blockSize, blockSize, blockSize);
+                    }
+                }
+            }
+            
+            qrCtx.fillStyle = '#0096FF';
+            qrCtx.font = 'bold 20px Arial';
+            qrCtx.textAlign = 'center';
+            qrCtx.fillText('PISI', 64, 70);
+            qrCtx.font = '12px Arial';
+            qrCtx.fillText(`#${bikeId}`, 64, 90);
+            
+            const qrTexture = new THREE.CanvasTexture(qrCanvas);
+            const qrMaterial = new THREE.MeshBasicMaterial({ map: qrTexture });
+            const qrGeometry = new THREE.PlaneGeometry(0.25, 0.25);
+            const qrCode = new THREE.Mesh(qrGeometry, qrMaterial);
+            qrCode.position.set(0, 1.1, -0.7);
+            qrCode.rotation.x = 0.3;
+            bike.add(qrCode);
+            
+            // Seat
+            const seatGeometry = new THREE.BoxGeometry(0.15, 0.05, 0.25);
+            const seatMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
+            const seat = new THREE.Mesh(seatGeometry, seatMaterial);
+            seat.position.set(0, 0.9, 0.3);
+            seat.castShadow = true;
+            bike.add(seat);
+            
+            // Wheels
+            const wheelGeometry = new THREE.TorusGeometry(0.3, 0.05, 8, 16);
+            const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            
+            const frontWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            frontWheel.rotation.y = Math.PI / 2;
+            frontWheel.position.set(0, 0.3, -0.6);
+            frontWheel.castShadow = true;
+            bike.add(frontWheel);
+            
+            const backWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            backWheel.rotation.y = Math.PI / 2;
+            backWheel.position.set(0, 0.3, 0.6);
+            backWheel.castShadow = true;
+            bike.add(backWheel);
+            
+            // Battery pack (electric bike feature)
+            const batteryGeometry = new THREE.BoxGeometry(0.12, 0.25, 0.15);
+            const batteryMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00AA55,
+                emissive: 0x00AA55,
+                emissiveIntensity: 0.3
+            });
+            const battery = new THREE.Mesh(batteryGeometry, batteryMaterial);
+            battery.position.set(0, 0.5, 0);
+            battery.castShadow = true;
+            bike.add(battery);
+            
+            // Battery indicator light
+            const batteryLightGeometry = new THREE.SphereGeometry(0.03, 8, 8);
+            const batteryLightMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.8
+            });
+            const batteryLight = new THREE.Mesh(batteryLightGeometry, batteryLightMaterial);
+            batteryLight.position.set(0, 0.65, 0);
+            bike.add(batteryLight);
+            
+            return bike;
+        }
+        
+        // Create bike station
+        function createBikeStation(x, z, numSlots, occupiedSlots, stationNumber) {
+            const station = new THREE.Group();
+            
+            // Platform base
+            const platformGeometry = new THREE.BoxGeometry(numSlots * 0.8 + 1, 0.2, 2.5);
+            const platformMaterial = new THREE.MeshPhongMaterial({ color: 0x404040 });
+            const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+            platform.position.y = 0.1;
+            platform.receiveShadow = true;
+            platform.castShadow = true;
+            station.add(platform);
+            
+            // Station frame/roof
+            const frameHeight = 3;
+            const frameWidth = numSlots * 0.8 + 1;
+            
+            // Left pillar
+            const pillarGeometry = new THREE.BoxGeometry(0.15, frameHeight, 0.15);
+            const leftPillar = new THREE.Mesh(pillarGeometry, stationFrameMaterial);
+            leftPillar.position.set(-frameWidth/2 + 0.3, frameHeight/2, -1);
+            leftPillar.castShadow = true;
+            station.add(leftPillar);
+            
+            // Right pillar
+            const rightPillar = new THREE.Mesh(pillarGeometry, stationFrameMaterial);
+            rightPillar.position.set(-frameWidth/2 + 0.3, frameHeight/2, 1);
+            rightPillar.castShadow = true;
+            station.add(rightPillar);
+            
+            // Roof
+            const roofGeometry = new THREE.BoxGeometry(frameWidth, 0.1, 2.5);
+            const roof = new THREE.Mesh(roofGeometry, stationFrameMaterial);
+            roof.position.y = frameHeight;
+            roof.castShadow = true;
+            station.add(roof);
+            
+            // Solar panels on roof
+            const solarGeometry = new THREE.BoxGeometry(frameWidth - 0.4, 0.05, 2);
+            const solarMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x1a1a3a,
+                shininess: 100
+            });
+            const solar = new THREE.Mesh(solarGeometry, solarMaterial);
+            solar.position.y = frameHeight + 0.1;
+            solar.castShadow = true;
+            station.add(solar);
+            
+            // Display screen
+            const displayGeometry = new THREE.BoxGeometry(1.2, 0.8, 0.1);
+            const display = new THREE.Mesh(displayGeometry, displayMaterial);
+            display.position.set(-frameWidth/2 + 0.3, 2, -1.3);
+            station.add(display);
+            
+            // Display text (station name)
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 512, 256);
+            ctx.fillStyle = '#00ff00';
+            ctx.font = 'bold 60px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`PISI Bike`, 256, 100);
+            ctx.font = '40px Arial';
+            ctx.fillText(`İstasyon ${stationNumber}`, 256, 160);
+            ctx.fillText(`${occupiedSlots}/${numSlots} Bisiklet`, 256, 210);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const screenMaterial = new THREE.MeshBasicMaterial({ map: texture });
+            const screenGeometry = new THREE.PlaneGeometry(1.15, 0.75);
+            const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+            screen.position.set(-frameWidth/2 + 0.3, 2, -1.25);
+            station.add(screen);
+            
+            // Add bikes and empty slots
+            const slotPositions = [];
+            for (let i = 0; i < numSlots; i++) {
+                slotPositions.push(i);
+            }
+            
+            // Shuffle to randomly place bikes
+            slotPositions.sort(() => Math.random() - 0.5);
+            
+            for (let i = 0; i < numSlots; i++) {
+                const hasBike = i < occupiedSlots;
+                const bikeId = hasBike ? Math.floor(1000 + Math.random() * 9000) : null;
+                const bike = createElectricBike(hasBike, bikeId);
+                bike.position.set(i * 0.8 - (numSlots * 0.8) / 2 + 0.4, 0.2, 0);
+                if (hasBike) {
+                    bike.rotation.y = Math.random() * 0.2 - 0.1;
+                    bike.userData.stationNumber = stationNumber;
+                    allBikes.push(bike);
+                }
+                station.add(bike);
+                
+                // Dock post
+                const postGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
+                const post = new THREE.Mesh(postGeometry, stationFrameMaterial);
+                post.position.set(i * 0.8 - (numSlots * 0.8) / 2 + 0.4, 0.5, -0.8);
+                post.castShadow = true;
+                station.add(post);
+                
+                // Lock mechanism
+                const lockGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.1);
+                const lockMaterial = new THREE.MeshPhongMaterial({ 
+                    color: hasBike ? 0xff0000 : 0x00ff00,
+                    emissive: hasBike ? 0xff0000 : 0x00ff00,
+                    emissiveIntensity: 0.5
+                });
+                const lock = new THREE.Mesh(lockGeometry, lockMaterial);
+                lock.position.set(i * 0.8 - (numSlots * 0.8) / 2 + 0.4, 1, -0.8);
+                station.add(lock);
+            }
+            
+            station.position.set(x, 0, z);
+            return station;
+        }
+        
+        // Create ground (grass)
+        const groundSize = 150;
+        const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
+        const ground = new THREE.Mesh(groundGeometry, grassMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Ana yol (yatay - güneyde)
+        const mainRoadGeometry = new THREE.PlaneGeometry(150, 12);
+        const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const mainRoad = new THREE.Mesh(mainRoadGeometry, roadMaterial);
+        mainRoad.rotation.x = -Math.PI / 2;
+        mainRoad.position.set(0, 0.02, 25);
+        mainRoad.receiveShadow = true;
+        scene.add(mainRoad);
+
+        // Yol çizgisi (kesikli beyaz)
+        for (let i = -70; i < 70; i += 8) {
+            const lineGeometry = new THREE.PlaneGeometry(4, 0.3);
+            const lineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const line = new THREE.Mesh(lineGeometry, lineMaterial);
+            line.rotation.x = -Math.PI / 2;
+            line.position.set(i, 0.03, 25);
+            scene.add(line);
+        }
+
+        
+        // Kampüs alanı (mavi çerçeveli alan - açık yeşil zemin)
+        const campusGeometry = new THREE.PlaneGeometry(60, 50);
+        const campusMaterial = new THREE.MeshLambertMaterial({ color: 0x4a9a4a });
+        const campus = new THREE.Mesh(campusGeometry, campusMaterial);
+        campus.rotation.x = -Math.PI / 2;
+        campus.position.set(0, 0.01, -5);
+        campus.receiveShadow = true;
+        scene.add(campus);
+
+        
+        // Bahçeşehir Üniversitesi Binası
+        function createBuilding() {
+            const building = new THREE.Group();
+
+            // Ana bina gövdesi (modern tasarım)
+            const bodyGeometry = new THREE.BoxGeometry(25, 12, 18);
+            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x1a1a2e });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 6;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            building.add(body);
+
+            // Üst kat (çıkıntılı)
+            const topFloorGeometry = new THREE.BoxGeometry(27, 4, 20);
+            const topFloorMaterial = new THREE.MeshPhongMaterial({ color: 0x16213e });
+            const topFloor = new THREE.Mesh(topFloorGeometry, topFloorMaterial);
+            topFloor.position.y = 14;
+            topFloor.castShadow = true;
+            building.add(topFloor);
+
+            // Çatı
+            const roofGeometry = new THREE.BoxGeometry(28, 0.5, 21);
+            const roofMaterial = new THREE.MeshPhongMaterial({ color: 0x0f3460 });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = 16.25;
+            roof.castShadow = true;
+            building.add(roof);
+
+            // Giriş sundurması
+            const canopyGeometry = new THREE.BoxGeometry(8, 0.3, 5);
+            const canopyMaterial = new THREE.MeshPhongMaterial({ color: 0x0096FF });
+            const canopy = new THREE.Mesh(canopyGeometry, canopyMaterial);
+            canopy.position.set(0, 4, 11);
+            canopy.castShadow = true;
+            building.add(canopy);
+
+            // Giriş sütunları
+            const pillarGeometry = new THREE.CylinderGeometry(0.3, 0.3, 4, 8);
+            const pillarMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+            const pillar1 = new THREE.Mesh(pillarGeometry, pillarMaterial);
+            pillar1.position.set(-3, 2, 11);
+            pillar1.castShadow = true;
+            building.add(pillar1);
+            const pillar2 = new THREE.Mesh(pillarGeometry, pillarMaterial);
+            pillar2.position.set(3, 2, 11);
+            pillar2.castShadow = true;
+            building.add(pillar2);
+
+            // Ana kapı (cam kapı efekti)
+            const doorGeometry = new THREE.PlaneGeometry(5, 3.5);
+            const doorMaterial = new THREE.MeshPhongMaterial({
+                color: 0x4a90d9,
+                transparent: true,
+                opacity: 0.7
+            });
+            const door = new THREE.Mesh(doorGeometry, doorMaterial);
+            door.position.set(0, 1.75, 9.01);
+            building.add(door);
+
+            // BAU Logo ve yazı
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Arka plan
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 1024, 256);
+
+            // BAU Logo (basit)
+            ctx.fillStyle = '#0096FF';
+            ctx.beginPath();
+            ctx.arc(120, 128, 60, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 50px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('BAU', 120, 145);
+
+            // Üniversite adı
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('BAHÇEŞEHİR', 220, 110);
+            ctx.fillText('ÜNİVERSİTESİ', 220, 170);
+
+            const signTexture = new THREE.CanvasTexture(canvas);
+            const signMaterial = new THREE.MeshBasicMaterial({ map: signTexture });
+            const signGeometry = new THREE.PlaneGeometry(16, 4);
+            const sign = new THREE.Mesh(signGeometry, signMaterial);
+            sign.position.set(0, 10, 9.02);
+            building.add(sign);
+
+            // Yan dekoratif çizgiler
+            const stripeMaterial = new THREE.MeshBasicMaterial({ color: 0x0096FF });
+            const stripe1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 12, 0.1), stripeMaterial);
+            stripe1.position.set(-12, 6, 9.01);
+            building.add(stripe1);
+            const stripe2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 12, 0.1), stripeMaterial);
+            stripe2.position.set(12, 6, 9.01);
+            building.add(stripe2);
+
+            return building;
+        }
+
+        const building = createBuilding();
+        building.position.set(0, 0, -5);
+        scene.add(building);
+
+        // Bankamatik (Batı istasyonunun sağında, yola yakın)
+        function createATM() {
+            const atm = new THREE.Group();
+
+            // Ana gövde
+            const bodyGeometry = new THREE.BoxGeometry(1.2, 2, 0.8);
+            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x1a5276 });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1;
+            body.castShadow = true;
+            atm.add(body);
+
+            // Ekran
+            const screenGeometry = new THREE.PlaneGeometry(0.8, 0.6);
+            const screenMaterial = new THREE.MeshPhongMaterial({
+                color: 0x85c1e9,
+                emissive: 0x2980b9,
+                emissiveIntensity: 0.3
+            });
+            const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+            screen.position.set(0, 1.3, 0.41);
+            atm.add(screen);
+
+            // Tuş takımı
+            const keypadGeometry = new THREE.PlaneGeometry(0.5, 0.4);
+            const keypadMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const keypad = new THREE.Mesh(keypadGeometry, keypadMaterial);
+            keypad.position.set(0, 0.7, 0.41);
+            atm.add(keypad);
+
+            // Kart yuvası
+            const slotGeometry = new THREE.BoxGeometry(0.3, 0.05, 0.05);
+            const slotMaterial = new THREE.MeshPhongMaterial({ color: 0x111111 });
+            const slot = new THREE.Mesh(slotGeometry, slotMaterial);
+            slot.position.set(0.3, 1, 0.41);
+            atm.add(slot);
+
+            // Banka logosu
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#1a5276';
+            ctx.fillRect(0, 0, 256, 64);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 28px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('ATM', 128, 42);
+
+            const logoTexture = new THREE.CanvasTexture(canvas);
+            const logoMaterial = new THREE.MeshBasicMaterial({ map: logoTexture });
+            const logoGeometry = new THREE.PlaneGeometry(0.8, 0.2);
+            const logo = new THREE.Mesh(logoGeometry, logoMaterial);
+            logo.position.set(0, 1.8, 0.41);
+            atm.add(logo);
+
+            return atm;
+        }
+
+        const atm = createATM();
+        atm.position.set(-18, 0, 6);  // Batı istasyonunun sağında, yolun kenarında
+        atm.rotation.y = 0;  // Ters yöne baksın
+        scene.add(atm);
+
+        // Metro İstasyonu Girişi (Güney istasyonunun arkasında)
+        function createMetroEntrance() {
+            const metro = new THREE.Group();
+
+            // Giriş yapısı (üst kısım) - BÜYÜK
+            const roofGeometry = new THREE.BoxGeometry(14, 0.8, 6);
+            const roofMaterial = new THREE.MeshPhongMaterial({ color: 0xcc0000 });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = 4.5;
+            roof.castShadow = true;
+            metro.add(roof);
+
+            // Sol sütun
+            const pillarGeometry = new THREE.BoxGeometry(0.8, 4.5, 0.8);
+            const pillarMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const pillarLeft = new THREE.Mesh(pillarGeometry, pillarMaterial);
+            pillarLeft.position.set(-6, 2.25, 0);
+            pillarLeft.castShadow = true;
+            metro.add(pillarLeft);
+
+            // Sağ sütun
+            const pillarRight = new THREE.Mesh(pillarGeometry, pillarMaterial);
+            pillarRight.position.set(6, 2.25, 0);
+            pillarRight.castShadow = true;
+            metro.add(pillarRight);
+
+            // Arka duvar
+            const backWallGeometry = new THREE.BoxGeometry(12, 4, 0.3);
+            const backWallMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
+            backWall.position.set(0, 2, -2.5);
+            metro.add(backWall);
+
+            // Merdiven girişi (aşağı inen)
+            const stairsGeometry = new THREE.BoxGeometry(10, 0.4, 4);
+            const stairsMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+            for (let i = 0; i < 5; i++) {
+                const stair = new THREE.Mesh(stairsGeometry, stairsMaterial);
+                stair.position.set(0, -i * 0.5, 1 + i * 1);
+                metro.add(stair);
+            }
+
+            // Zemin platformu
+            const platformGeometry = new THREE.BoxGeometry(16, 0.2, 8);
+            const platformMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+            const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+            platform.position.set(0, 0.1, 2);
+            metro.add(platform);
+
+            // Metro logosu ve yazısı - ÖN YÜZDE
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#cc0000';
+            ctx.fillRect(0, 0, 512, 128);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 70px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('M  METRO', 256, 90);
+
+            const signTexture = new THREE.CanvasTexture(canvas);
+            const signMaterial = new THREE.MeshBasicMaterial({ map: signTexture });
+            const signGeometry = new THREE.PlaneGeometry(10, 2.5);
+            const sign = new THREE.Mesh(signGeometry, signMaterial);
+            sign.position.set(0, 5.5, 3.01);
+            metro.add(sign);
+
+            // Üst çatı (yazı için)
+            const signRoofGeometry = new THREE.BoxGeometry(12, 0.4, 2);
+            const signRoof = new THREE.Mesh(signRoofGeometry, roofMaterial);
+            signRoof.position.set(0, 6.9, 3);
+            metro.add(signRoof);
+
+            // M logoları (yanlarda)
+            const logoCanvas = document.createElement('canvas');
+            logoCanvas.width = 128;
+            logoCanvas.height = 128;
+            const logoCtx = logoCanvas.getContext('2d');
+            logoCtx.fillStyle = '#cc0000';
+            logoCtx.beginPath();
+            logoCtx.arc(64, 64, 60, 0, Math.PI * 2);
+            logoCtx.fill();
+            logoCtx.fillStyle = '#ffffff';
+            logoCtx.font = 'bold 80px Arial';
+            logoCtx.textAlign = 'center';
+            logoCtx.fillText('M', 64, 90);
+
+            const mLogoTexture = new THREE.CanvasTexture(logoCanvas);
+            const mLogoMaterial = new THREE.MeshBasicMaterial({ map: mLogoTexture });
+            const mLogoGeometry = new THREE.PlaneGeometry(2, 2);
+
+            const mLogo1 = new THREE.Mesh(mLogoGeometry, mLogoMaterial);
+            mLogo1.position.set(-6.5, 3, 0.5);
+            metro.add(mLogo1);
+
+            const mLogo2 = new THREE.Mesh(mLogoGeometry, mLogoMaterial);
+            mLogo2.position.set(6.5, 3, 0.5);
+            metro.add(mLogo2);
+
+            return metro;
+        }
+
+        const metroEntrance = createMetroEntrance();
+        metroEntrance.position.set(31, 0, 50);  // Güney istasyonunun arkasında
+        metroEntrance.rotation.y = Math.PI;  // Ters yöne baksın (kuzeye doğru)
+        scene.add(metroEntrance);
+
+        // ATM pozisyonu (etkileşim için)
+        const atmPosition = new THREE.Vector3(-18, 0, 6);
+
+        // ATM'ye yakın mı kontrol et
+        function isNearATM() {
+            const distance = camera.position.distanceTo(atmPosition);
+            return distance < 4;
+        }
+
+        // ATM'den para çek
+        function withdrawFromATM() {
+            currentBalance += 20;
+            updateBalanceDisplay();
+
+            // Bildirim göster
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+                color: white;
+                padding: 30px 50px;
+                border-radius: 15px;
+                font-size: 24px;
+                font-weight: bold;
+                z-index: 10000;
+                text-align: center;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            `;
+            notification.innerHTML = `
+                🏧 Para Çekildi!<br>
+                <span style="font-size: 32px; color: #2ecc71;">+20.00 TL</span><br>
+                <span style="font-size: 16px; opacity: 0.8;">Yeni Bakiye: ${currentBalance.toFixed(2)} TL</span>
+            `;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 2000);
+
+            console.log('🏧 ATM: +20 TL çekildi. Yeni bakiye:', currentBalance.toFixed(2), 'TL');
+        }
+
+        // Bisiklet yolları (mavi) - düz hatlar
+        const bikePathMaterial = new THREE.MeshLambertMaterial({ color: 0x0096FF });
+
+        // Kuzey yatay yol (z=-25)
+        const bikePath1 = new THREE.Mesh(new THREE.PlaneGeometry(54, 3), bikePathMaterial);
+        bikePath1.rotation.x = -Math.PI / 2;
+        bikePath1.position.set(0, 0.015, -25);
+        scene.add(bikePath1);
+
+        // Sol dikey yol (x=-25, Kuzey'den Batı'ya)
+        const bikePath2 = new THREE.Mesh(new THREE.PlaneGeometry(3, 40), bikePathMaterial);
+        bikePath2.rotation.x = -Math.PI / 2;
+        bikePath2.position.set(-25, 0.015, -5);
+        scene.add(bikePath2);
+
+        // Sağ dikey yol (x=25, Kuzey'den Güney'e - TEK DÜZ YOL)
+        const bikePath3 = new THREE.Mesh(new THREE.PlaneGeometry(3, 70), bikePathMaterial);
+        bikePath3.rotation.x = -Math.PI / 2;
+        bikePath3.position.set(25, 0.015, 10);
+        scene.add(bikePath3);
+
+        // Okul önü bisiklet yolu (Batı-Doğu, z=10)
+        const bikePath4 = new THREE.Mesh(new THREE.PlaneGeometry(53, 3), bikePathMaterial);
+        bikePath4.rotation.x = -Math.PI / 2;
+        bikePath4.position.set(0, 0.015, 10);
+        scene.add(bikePath4);
+
+        // Güney istasyonuna bağlantı (x=25'ten x=31'e)
+        const bikePath5 = new THREE.Mesh(new THREE.PlaneGeometry(9, 3), bikePathMaterial);
+        bikePath5.rotation.x = -Math.PI / 2;
+        bikePath5.position.set(28, 0.015, 42);
+        scene.add(bikePath5);
+
+        // Yaya geçidi - otoyol üzerinde (Güney istasyonuna geçiş)
+        function createCrossing(x, z, width) {
+            const crossing = new THREE.Group();
+            const stripeGeometry = new THREE.PlaneGeometry(width, 0.8);
+            const stripeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+            for (let i = 0; i < 8; i++) {
+                const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+                stripe.rotation.x = -Math.PI / 2;
+                stripe.position.set(0, 0.035, -5 + i * 1.4);
+                crossing.add(stripe);
+            }
+
+            crossing.position.set(x, 0, z);
+            return crossing;
+        }
+
+        // Otoyol üzerinde yaya geçidi (bisiklet yolunun geçtiği yerde, x=25)
+        scene.add(createCrossing(25, 25, 5));
+
+        // Kampüs içi kaldırımlar
+        const campusPathMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
+
+        // Bina önü geniş kaldırım
+        const frontPath = new THREE.Mesh(new THREE.PlaneGeometry(30, 8), campusPathMaterial);
+        frontPath.rotation.x = -Math.PI / 2;
+        frontPath.position.set(0, 0.02, 6);
+        scene.add(frontPath);
+
+        // Binaya giden ana yol
+        const mainPath = new THREE.Mesh(new THREE.PlaneGeometry(6, 15), campusPathMaterial);
+        mainPath.rotation.x = -Math.PI / 2;
+        mainPath.position.set(0, 0.02, -5);
+        scene.add(mainPath);
+
+        // İstasyonların konumları (bisiklet yoluna yapışık ve paralel)
+        const stationPositions = {
+            1: { x: 0, z: -22, rotation: 0 },           // Kuzey (yola paralel)
+            2: { x: -22, z: 14, rotation: 0 },         // Batı (yola paralel)
+            3: { x: 22, z: 14, rotation: 0 },          // Doğu (yola paralel)
+            4: { x: 31, z: 42, rotation: 0 }           // Güney (daha güneyde)
+        };
+
+        // Create stations
+        station1 = createBikeStation(stationPositions[1].x, stationPositions[1].z,
+            stationStats.station1.total,
+            stationStats.station1.occupied,
+            1
+        );
+        station1.rotation.y = stationPositions[1].rotation;
+        scene.add(station1);
+
+        station2 = createBikeStation(stationPositions[2].x, stationPositions[2].z,
+            stationStats.station2.total,
+            stationStats.station2.occupied,
+            2
+        );
+        station2.rotation.y = stationPositions[2].rotation;
+        scene.add(station2);
+
+        station3 = createBikeStation(stationPositions[3].x, stationPositions[3].z,
+            stationStats.station3.total,
+            stationStats.station3.occupied,
+            3
+        );
+        station3.rotation.y = stationPositions[3].rotation;
+        scene.add(station3);
+
+        station4 = createBikeStation(stationPositions[4].x, stationPositions[4].z,
+            stationStats.station4.total,
+            stationStats.station4.occupied,
+            4
+        );
+        station4.rotation.y = stationPositions[4].rotation;
+        scene.add(station4);
+
+        // Add some trees/decorations
+        function createTree(x, z) {
+            const tree = new THREE.Group();
+
+            const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 3, 8);
+            const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x4a3c28 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 1.5;
+            trunk.castShadow = true;
+            tree.add(trunk);
+
+            const leavesGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+            const leavesMaterial = new THREE.MeshLambertMaterial({ color: 0x2d5a2d });
+            const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+            leaves.position.y = 3.5;
+            leaves.castShadow = true;
+            tree.add(leaves);
+
+            tree.position.set(x, 0, z);
+            return tree;
+        }
+
+        // Add trees around campus (bisiklet yollarından uzakta)
+        scene.add(createTree(-18, -18));
+        scene.add(createTree(18, -18));
+        scene.add(createTree(-10, -18));
+        scene.add(createTree(10, -18));
+        scene.add(createTree(-18, 0));
+        scene.add(createTree(18, 0));
+        scene.add(createTree(-15, 5));
+        scene.add(createTree(15, 5));
+
+        // Doğalım yanındaki ağaçlar
+        scene.add(createTree(-8, -15));
+        scene.add(createTree(-20, -12));
+
+        // Oturma bankları
+        function createBench(x, z, rotation) {
+            const bench = new THREE.Group();
+            const seatGeometry = new THREE.BoxGeometry(2, 0.1, 0.6);
+            const legGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.5);
+            const benchMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+
+            const seat = new THREE.Mesh(seatGeometry, benchMaterial);
+            seat.position.y = 0.5;
+            bench.add(seat);
+
+            const leg1 = new THREE.Mesh(legGeometry, benchMaterial);
+            leg1.position.set(-0.8, 0.2, 0);
+            bench.add(leg1);
+
+            const leg2 = new THREE.Mesh(legGeometry, benchMaterial);
+            leg2.position.set(0.8, 0.2, 0);
+            bench.add(leg2);
+
+            bench.position.set(x, 0, z);
+            bench.rotation.y = rotation;
+            return bench;
+        }
+
+        // Kampüs içi banklar
+        scene.add(createBench(-10, 3, 0));
+        scene.add(createBench(10, 3, 0));
+        scene.add(createBench(-18, -15, Math.PI / 2));
+        scene.add(createBench(18, -15, -Math.PI / 2));
+
+        // Bisiklet yolu işareti (tabela)
+        function createBikeSign(x, z) {
+            const sign = new THREE.Group();
+
+            // Direk
+            const poleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 2, 8);
+            const poleMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+            const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+            pole.position.y = 1;
+            sign.add(pole);
+
+            // Tabela
+            const boardGeometry = new THREE.BoxGeometry(0.8, 0.6, 0.05);
+            const boardMaterial = new THREE.MeshPhongMaterial({ color: 0x0096FF });
+            const board = new THREE.Mesh(boardGeometry, boardMaterial);
+            board.position.y = 2.2;
+            sign.add(board);
+
+            // Bisiklet ikonu (basit)
+            const iconGeometry = new THREE.TorusGeometry(0.12, 0.03, 8, 16);
+            const iconMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const wheel1 = new THREE.Mesh(iconGeometry, iconMaterial);
+            wheel1.position.set(-0.15, 2.15, 0.03);
+            sign.add(wheel1);
+            const wheel2 = new THREE.Mesh(iconGeometry, iconMaterial);
+            wheel2.position.set(0.15, 2.15, 0.03);
+            sign.add(wheel2);
+
+            sign.position.set(x, 0, z);
+            return sign;
+        }
+
+        // Bisiklet yolu tabelaları
+        scene.add(createBikeSign(-27, -20));
+        scene.add(createBikeSign(27, -20));
+        scene.add(createBikeSign(-27, 10));
+        scene.add(createBikeSign(27, 10));
+        
+        // Test bisikleti - okulun önündeki yeşillikte (istasyonda olmayan)
+        const testBike = createElectricBike(true, 9999);
+        testBike.position.set(8, 0.2, 15);  // Okulun önünde, yeşillikte
+        testBike.rotation.y = Math.PI / 3;
+        testBike.userData.stationNumber = 0; // İstasyonda değil
+        allBikes.push(testBike);
+        scene.add(testBike);
+
+        console.log('🚲 PISI BikeApp - Bahçeşehir Üniversitesi Başlatıldı!');
+        console.log('📍 4 İstasyon: Kuzey, Batı, Doğu, Güney');
+        console.log('🚴 Mavi yollar bisiklet yoludur');
+        console.log('🏧 ATM Batı istasyonu yanında');
+        console.log('🚲 Test bisikleti okulun önündeki yeşillikte');
+        console.log('⌨️ E tuşuna basarak bisiklet kiralayabilirsiniz');
+        
+        // Update stats display
+        updateStatsDisplay();
+        
+        // Setup map canvas
+        const mapCanvas = document.getElementById('map-canvas');
+        const mapCtx = mapCanvas.getContext('2d');
+        
+        // İstasyon pozisyonları (harita için)
+        const stationMapPositions = {
+            1: { x: 0, z: -22 },    // Kuzey
+            2: { x: -22, z: 14 },   // Batı
+            3: { x: 22, z: 14 },    // Doğu
+            4: { x: 31, z: 42 }     // Güney
+        };
+
+        function updateMap() {
+            if (!isPhoneOpen || document.getElementById('map-container').style.display === 'none') return;
+
+            mapCanvas.width = mapCanvas.clientWidth;
+            mapCanvas.height = mapCanvas.clientHeight;
+
+            const centerX = mapCanvas.width / 2;
+            const centerY = mapCanvas.height / 2;
+            const scale = 3.5;
+
+            // Clear canvas
+            mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+
+            // Background
+            mapCtx.fillStyle = '#e8f4e8';
+            mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+
+            // Kampüs alanı (açık yeşil)
+            const campusX = centerX + 0 * scale - 105;
+            const campusY = centerY + (-5) * scale - 85;
+            mapCtx.fillStyle = '#c8e8c8';
+            mapCtx.fillRect(campusX, campusY, 210, 170);
+
+            // Bisiklet yolları (mavi) - düz hatlar
+            mapCtx.fillStyle = '#0096FF';
+
+            // Pozisyonları hesapla
+            const kuzeY = centerY + (-25) * scale;
+            const batiX = centerX + (-25) * scale;
+            const doguX = centerX + 25 * scale;
+            const ortaY = centerY + 10 * scale;
+            const guneyY = centerY + 42 * scale;
+
+            // Kuzey yatay yol
+            mapCtx.fillRect(batiX, kuzeY - 4, doguX - batiX + 6, 8);
+
+            // Sol dikey yol (Kuzey'den Batı'ya)
+            mapCtx.fillRect(batiX - 4, kuzeY, 8, ortaY - kuzeY + 8);
+
+            // Sağ dikey yol (Kuzey'den Güney'e - TEK DÜZ YOL x=25)
+            mapCtx.fillRect(doguX - 4, kuzeY, 8, guneyY - kuzeY + 8);
+
+            // Okul önü bisiklet yolu (Batı-Doğu)
+            mapCtx.fillRect(batiX, ortaY - 4, doguX - batiX + 6, 8);
+
+            // Güney istasyonuna bağlantı
+            const guneyStX = centerX + 31 * scale;
+            mapCtx.fillRect(doguX, guneyY - 4, guneyStX - doguX + 4, 8);
+
+            // Ana yol (yatay - güneyde)
+            const roadY = centerY + 25 * scale;
+            mapCtx.fillStyle = '#333333';
+            mapCtx.fillRect(0, roadY - 20, mapCanvas.width, 40);
+
+            // Yol çizgisi
+            mapCtx.strokeStyle = '#ffffff';
+            mapCtx.lineWidth = 2;
+            mapCtx.setLineDash([15, 10]);
+            mapCtx.beginPath();
+            mapCtx.moveTo(0, roadY);
+            mapCtx.lineTo(mapCanvas.width, roadY);
+            mapCtx.stroke();
+            mapCtx.setLineDash([]);
+
+            
+            // Yaya geçidi - otoyol üzerinde (x=25'te)
+            mapCtx.fillStyle = '#ffffff';
+            for (let i = 0; i < 6; i++) {
+                mapCtx.fillRect(doguX - 10 + i * 4, roadY - 18, 2, 36);
+            }
+
+            // Bahçeşehir Üniversitesi Binası
+            const buildingX = centerX - 45;
+            const buildingY = centerY + (-5) * scale - 30;
+            mapCtx.fillStyle = '#1a1a2e';
+            mapCtx.fillRect(buildingX, buildingY, 90, 55);
+
+            // BAU logosu
+            mapCtx.fillStyle = '#0096FF';
+            mapCtx.beginPath();
+            mapCtx.arc(buildingX + 20, buildingY + 27, 12, 0, Math.PI * 2);
+            mapCtx.fill();
+            mapCtx.fillStyle = '#ffffff';
+            mapCtx.font = 'bold 8px Arial';
+            mapCtx.textAlign = 'center';
+            mapCtx.fillText('BAU', buildingX + 20, buildingY + 30);
+
+            // Üniversite adı
+            mapCtx.fillStyle = '#ffffff';
+            mapCtx.font = 'bold 9px Arial';
+            mapCtx.textAlign = 'left';
+            mapCtx.fillText('BAHÇEŞEHİR', buildingX + 35, buildingY + 24);
+            mapCtx.fillText('ÜNİVERSİTESİ', buildingX + 35, buildingY + 35);
+
+            // ATM (Batı istasyonunun sağında, yolun kenarında)
+            const atmX = centerX + (-18) * scale - 6;
+            const atmY = centerY + 6 * scale - 6;
+            mapCtx.fillStyle = '#1a5276';
+            mapCtx.fillRect(atmX, atmY, 12, 12);
+            mapCtx.fillStyle = '#ffffff';
+            mapCtx.font = 'bold 7px Arial';
+            mapCtx.textAlign = 'center';
+            mapCtx.fillText('ATM', atmX + 6, atmY + 8);
+
+            // Metro girişi (Güney istasyonunun arkasında) - BÜYÜK
+            const metroX = centerX + 31 * scale - 20;
+            const metroY = centerY + 50 * scale - 12;
+            mapCtx.fillStyle = '#cc0000';
+            mapCtx.fillRect(metroX, metroY, 40, 24);
+            mapCtx.strokeStyle = '#990000';
+            mapCtx.lineWidth = 2;
+            mapCtx.strokeRect(metroX, metroY, 40, 24);
+            mapCtx.fillStyle = '#ffffff';
+            mapCtx.font = 'bold 12px Arial';
+            mapCtx.textAlign = 'center';
+            mapCtx.fillText('M METRO', metroX + 20, metroY + 16);
+
+            // İstasyon marker'larını güncelle
+            const stations = [
+                { num: 1, ...stationMapPositions[1] },
+                { num: 2, ...stationMapPositions[2] },
+                { num: 3, ...stationMapPositions[3] },
+                { num: 4, ...stationMapPositions[4] }
+            ];
+
+            stations.forEach(station => {
+                const sx = centerX + station.x * scale;
+                const sy = centerY + station.z * scale;
+                const marker = document.getElementById(`station${station.num}-marker`);
+                if (marker) {
+                    marker.style.left = (sx / mapCanvas.width * 100) + '%';
+                    marker.style.top = (sy / mapCanvas.height * 100) + '%';
+
+                    // Marker sayısını güncelle
+                    const stats = stationStats['station' + station.num];
+                    const countEl = document.getElementById(`station${station.num}-count`);
+                    if (countEl) {
+                        countEl.textContent = `${stats.occupied}/${stats.total}`;
+                    }
+                }
+            });
+
+            // Update user position marker
+            const userMarker = document.getElementById('user-position');
+            const userX = (camera.position.x * scale + centerX) / mapCanvas.width * 100;
+            const userY = (camera.position.z * scale + centerY) / mapCanvas.height * 100;
+            userMarker.style.left = Math.max(5, Math.min(95, userX)) + '%';
+            userMarker.style.top = Math.max(5, Math.min(95, userY)) + '%';
+
+            // Update selected station distance if detail is open
+            if (selectedStation) {
+                const pos = stationMapPositions[selectedStation];
+                const stationPos = new THREE.Vector3(pos.x, 0, pos.z);
+                const distance = Math.floor(camera.position.distanceTo(stationPos));
+                document.getElementById('detail-distance').textContent = distance + 'm';
+            }
+        }
+        
+        setInterval(updateMap, 100);
+        
+        // Phone UI controls
+        let isPhoneOpen = false;
+        const phoneContainer = document.getElementById('phone-container');
+        const phoneClose = document.getElementById('phone-close');
+        const scanIndicator = document.getElementById('scan-indicator');
+        let isScanning = false;
+        
+        function togglePhone() {
+            isPhoneOpen = !isPhoneOpen;
+            if (isPhoneOpen) {
+                phoneContainer.classList.add('active');
+                updateBalanceDisplay();
+                updateMap();
+                // Varsayılan olarak scan butonunu gizle
+                document.getElementById('scan-button').style.display = 'none';
+                if (document.pointerLockElement) {
+                    document.exitPointerLock();
+                }
+            } else {
+                phoneContainer.classList.remove('active');
+                isScanning = false;
+                selectedStation = null;
+                nearbyBikeForRent = null;
+                document.getElementById('station-detail').classList.remove('active');
+                document.getElementById('bike-detail').classList.remove('active');
+                document.getElementById('ride-info').classList.remove('active');
+                document.getElementById('scan-button').style.display = 'none';
+            }
+        }
+        
+        function updateBalanceDisplay() {
+            document.getElementById('balance-display').textContent = `💳 ${currentBalance.toFixed(2)} TL`;
+        }
+        
+        window.selectStation = function(stationNum) {
+            selectedStation = stationNum;
+
+            // Update marker styles
+            document.querySelectorAll('.station-marker').forEach(m => m.classList.remove('selected'));
+            document.getElementById(`station${stationNum}-marker`).classList.add('selected');
+
+            // Show detail panel
+            const stats = stationStats['station' + stationNum];
+            const pos = stationMapPositions[stationNum];
+            const stationPos = new THREE.Vector3(pos.x, 0, pos.z);
+            const distance = Math.floor(camera.position.distanceTo(stationPos));
+
+            document.getElementById('detail-title').textContent = stats.name;
+            document.getElementById('detail-occupied').textContent = stats.occupied;
+            document.getElementById('detail-available').textContent = stats.available;
+            document.getElementById('detail-distance').textContent = distance + 'm';
+            document.getElementById('station-detail').classList.add('active');
+        };
+        
+        window.closeStationDetail = function() {
+            selectedStation = null;
+            document.getElementById('station-detail').classList.remove('active');
+            document.querySelectorAll('.station-marker').forEach(m => m.classList.remove('selected'));
+        };
+
+        window.closeBikeDetail = function() {
+            nearbyBikeForRent = null;
+            document.getElementById('bike-detail').classList.remove('active');
+        };
+
+        window.closeRideInfo = function() {
+            document.getElementById('ride-info').classList.remove('active');
+        };
+
+        window.showRideInfo = function() {
+            // Close other panels
+            closeStationDetail();
+            closeBikeDetail();
+
+            if (!rentedBike) return;
+
+            const bikeId = rentedBike.userData.bikeId;
+
+            // Calculate ride duration
+            const now = Date.now();
+            const durationMs = now - rideStartTime;
+            const durationMinutes = Math.floor(durationMs / 60000);
+            const durationSeconds = Math.floor((durationMs % 60000) / 1000);
+            const durationText = `${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`;
+
+            // Calculate cost (5 TL for first 15 minutes, then 0.50 TL per minute)
+            let cost = 5.00;
+            if (durationMinutes > 15) {
+                cost += (durationMinutes - 15) * 0.50;
+            }
+
+            // Simulate battery drain (1% per 2 minutes)
+            rideBattery = Math.max(0, 100 - Math.floor(durationMinutes / 2));
+
+            // Update ride info panel
+            document.getElementById('ride-bike-id').textContent = '#' + bikeId;
+            document.getElementById('ride-battery').textContent = rideBattery + '%';
+            document.getElementById('ride-duration').textContent = durationText;
+            document.getElementById('ride-cost').textContent = cost.toFixed(2) + ' TL';
+
+            // Check if near a station (4 istasyon)
+            const playerPos = camera.position;
+            let nearStation = null;
+            const stationCheckDistance = 8;
+
+            for (let i = 1; i <= 4; i++) {
+                const pos = stationMapPositions[i];
+                const stationPos = new THREE.Vector3(pos.x, 0, pos.z);
+                if (playerPos.distanceTo(stationPos) < stationCheckDistance) {
+                    nearStation = i;
+                    break;
+                }
+            }
+
+            const scanBtn = document.getElementById('scan-button');
+            const stationNearbyInfo = document.getElementById('station-nearby-info');
+
+            if (nearStation) {
+                // Near a station - show "End Ride" button
+                document.getElementById('nearby-station-num').textContent = nearStation;
+                stationNearbyInfo.style.display = 'block';
+
+                scanBtn.innerHTML = '🅿️ Sürüşü Bitir ve Park Et';
+                scanBtn.style.background = 'linear-gradient(135deg, #FF9500 0%, #FFAA00 100%)';
+                scanBtn.style.display = 'flex';
+            } else {
+                // Not near a station - hide button
+                stationNearbyInfo.style.display = 'none';
+                scanBtn.style.display = 'none';
+            }
+
+            // Show ride info panel
+            document.getElementById('ride-info').classList.add('active');
+        };
+
+        window.showBikeDetail = function(bike) {
+            // Close station detail if open
+            closeStationDetail();
+
+            nearbyBikeForRent = bike;
+            const bikeId = bike.userData.bikeId;
+
+            // Get bike position
+            const bikeWorldPos = new THREE.Vector3();
+            bike.getWorldPosition(bikeWorldPos);
+            const distance = Math.floor(camera.position.distanceTo(bikeWorldPos));
+
+            // Random battery between 75-100%
+            const battery = Math.floor(75 + Math.random() * 25);
+
+            // Update bike detail panel
+            document.getElementById('bike-detail-id').textContent = '#' + bikeId;
+            document.getElementById('bike-battery').textContent = battery + '%';
+            document.getElementById('bike-distance').textContent = distance + 'm';
+
+            // Show bike detail panel
+            document.getElementById('bike-detail').classList.add('active');
+
+            // Update scan button
+            const scanBtn = document.getElementById('scan-button');
+            scanBtn.innerHTML = '🔓 Bisiklet Kilidini Aç';
+            scanBtn.style.background = 'linear-gradient(135deg, #00CC66 0%, #00D4AA 100%)';
+            scanBtn.style.display = 'flex';
+        };
+        
+        phoneClose.addEventListener('click', togglePhone);
+        
+        // Phone app functions
+        window.showMap = function() {
+            document.getElementById('payment-panel').classList.remove('active');
+            document.getElementById('map-container').style.display = 'block';
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateMap();
+        };
+        
+        window.showPayment = function() {
+            document.getElementById('map-container').style.display = 'none';
+            document.getElementById('payment-panel').classList.add('active');
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            closeStationDetail();
+        };
+        
+        window.startScanning = function() {
+            // If there's a nearby bike ready to rent, rent it
+            if (nearbyBikeForRent) {
+                scanAndRentBike();
+                return;
+            }
+
+            // If user has a rented bike and is near a station, park it
+            if (rentedBike) {
+                const playerPos = camera.position;
+                let nearStation = null;
+
+                for (let i = 1; i <= 4; i++) {
+                    const pos = stationMapPositions[i];
+                    const stationPos = new THREE.Vector3(pos.x, 0, pos.z);
+                    if (playerPos.distanceTo(stationPos) < 8) {
+                        nearStation = i;
+                        break;
+                    }
+                }
+
+                if (nearStation) {
+                    parkBike();
+                    return;
+                }
+            }
+
+            // Otherwise, toggle scanning mode
+            isScanning = !isScanning;
+            const btn = document.getElementById('scan-button');
+            if (isScanning) {
+                btn.innerHTML = '⏹️ Taramayı Durdur';
+                btn.style.background = 'linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)';
+            } else {
+                btn.innerHTML = '📷 Bisiklet QR Kodunu Tara';
+                btn.style.background = 'linear-gradient(135deg, #00CC66 0%, #00D4AA 100%)';
+            }
+        };
+        
+        window.addPayment = function() {
+            const methods = ['💳 Banka Kartı', '💰 Havale/EFT', '📱 Dijital Cüzdan'];
+            const choice = prompt(`Yeni ödeme yöntemi seçin:\n\n1. ${methods[0]}\n2. ${methods[1]}\n3. ${methods[2]}\n\nLütfen 1, 2 veya 3 girin:`);
+            if (choice >= 1 && choice <= 3) {
+                alert(`✓ ${methods[choice-1]} ekleme işlemi başlatıldı!\n\nGüvenlik nedeniyle gerçek ödeme bilgisi girmeyiniz.`);
+            }
+        };
+        
+        // Check if player is near a bike
+        function getNearbyBike(shouldLog = false) {
+            const playerPos = camera.position;
+            const maxDistance = 3; // 3 units - close distance
+            
+            if (shouldLog) {
+                console.log('🔍 Bisiklet aranıyor... Oyuncu pozisyonu:', {
+                    x: playerPos.x.toFixed(2),
+                    y: playerPos.y.toFixed(2),
+                    z: playerPos.z.toFixed(2)
+                });
+                
+                console.log('📦 Toplam bisiklet sayısı:', allBikes.length);
+            }
+            
+            for (let bike of allBikes) {
+                if (shouldLog) {
+                    console.log('🚲 Bisiklet kontrol ediliyor:', {
+                        id: bike.userData.bikeId,
+                        isAvailable: bike.userData.isAvailable
+                    });
+                }
+                
+                if (!bike.userData.isAvailable) {
+                    if (shouldLog) console.log('   ⏭️ Bu bisiklet müsait değil, atlanıyor');
+                    continue;
+                }
+                
+                const bikeWorldPos = new THREE.Vector3();
+                bike.getWorldPosition(bikeWorldPos);
+                
+                if (shouldLog) {
+                    console.log('   📍 Bisiklet pozisyonu:', {
+                        x: bikeWorldPos.x.toFixed(2),
+                        y: bikeWorldPos.y.toFixed(2),
+                        z: bikeWorldPos.z.toFixed(2)
+                    });
+                }
+                
+                const distance = playerPos.distanceTo(bikeWorldPos);
+                if (shouldLog) {
+                    console.log('   📏 Mesafe:', distance.toFixed(2), 'm (maksimum:', maxDistance, 'm)');
+                }
+                
+                if (distance < maxDistance) {
+                    if (shouldLog) console.log('   ✅ Bisiklet yakınlarda bulundu!');
+                    return bike;
+                } else {
+                    if (shouldLog) console.log('   ❌ Bisiklet çok uzak');
+                }
+            }
+            
+            if (shouldLog) console.log('❌ Hiçbir bisiklet bulunamadı');
+            return null;
+        }
+        
+        // Scan and rent bike
+        function scanAndRentBike() {
+            const nearbyBike = nearbyBikeForRent || getNearbyBike();
+            if (!nearbyBike) {
+                console.log('❌ BAŞARISIZ: Yakınınızda bisiklet bulunamadı!');
+
+                // Show error message
+                scanIndicator.className = 'error';
+                scanIndicator.style.display = 'block';
+                scanIndicator.textContent = '❌ Başarısız! Yakınınızda bisiklet yok';
+
+                setTimeout(() => {
+                    scanIndicator.style.display = 'none';
+                    scanIndicator.className = '';
+                }, 2000);
+                return;
+            }
+
+            console.log('✅ BAŞARILI: Bisiklet bulundu!');
+            console.log('📍 Bisiklet ID:', nearbyBike.userData.bikeId);
+
+            // Simulate random success/failure (90% success rate)
+            const isSuccess = Math.random() > 0.1;
+
+            // Show scanning animation
+            scanIndicator.className = '';
+            scanIndicator.style.display = 'block';
+            scanIndicator.textContent = '🔓 Bisiklet Açılıyor...';
+
+            setTimeout(() => {
+                const bikeId = nearbyBike.userData.bikeId;
+                const stationNum = nearbyBike.userData.stationNumber;
+
+                if (!isSuccess) {
+                    // Failed to unlock
+                    scanIndicator.className = 'error';
+                    scanIndicator.textContent = '❌ Açılmadı! Tekrar deneyin';
+                    console.log('❌ BAŞARISIZ: Bisiklet kilidi açılamadı!');
+
+                    setTimeout(() => {
+                        scanIndicator.style.display = 'none';
+                        scanIndicator.className = '';
+                    }, 2000);
+                    return;
+                }
+
+                // Success!
+                scanIndicator.className = 'success';
+                scanIndicator.textContent = '✓ Açıldı!';
+                console.log('✅ BAŞARILI: Bisiklet kilidi açıldı!');
+
+                setTimeout(() => {
+                    scanIndicator.style.display = 'none';
+                    scanIndicator.className = '';
+
+                    const locationText = stationNum === 0 ? 'Serbest Bisiklet' : `İstasyon ${stationNum}`;
+
+                    // Rent the bike - mark as unavailable
+                    rentedBike = nearbyBike;
+                    nearbyBike.userData.isAvailable = false;
+
+                    // Completely hide the rented bike (tamamen gizle)
+                    nearbyBike.visible = false;
+
+                    // Show handlebar view (HTML overlay)
+                    document.getElementById('handlebar-view').style.display = 'block';
+
+                    console.log('🚴 Bisiklete bindiniz! Gidondan tutuyorsunuz.');
+
+                    // Start ride timer
+                    rideStartTime = Date.now();
+                    rideBattery = Math.floor(75 + Math.random() * 25); // Random battery 75-100%
+
+                    // Deduct from balance
+                    currentBalance -= 5.00;
+                    updateBalanceDisplay();
+
+                    console.log('💰 Bakiye güncellendi:', currentBalance.toFixed(2), 'TL');
+
+                    // Update station stats if from station
+                    if (stationNum >= 1 && stationNum <= 4) {
+                        const rentStats = stationStats['station' + stationNum];
+                        rentStats.occupied--;
+                        rentStats.available++;
+                        console.log('📊 İstasyon ' + stationNum + ' güncellendi:', rentStats);
+                    }
+                    updateStatsDisplay();
+
+                    console.log('✅ BAŞARILI: Bisiklet #' + bikeId + ' kiralandı!');
+
+                    // Close phone and reset bike detail
+                    nearbyBikeForRent = null;
+                    closeBikeDetail();
+                    if (isPhoneOpen) {
+                        togglePhone();
+                    }
+
+                    isScanning = false;
+                    document.getElementById('scan-button').innerHTML = '📷 Bisiklet QR Kodunu Tara';
+                    document.getElementById('scan-button').style.background = 'linear-gradient(135deg, #00CC66 0%, #00D4AA 100%)';
+                }, 1500);
+            }, 1500);
+        }
+        
+        // Park rented bike
+        function parkBike() {
+            if (!rentedBike) {
+                console.log('❌ BAŞARISIZ: Kiralanmış bisiklet yok!');
+                alert('⚠️ Kiralanmış bisiklet yok!\n\nÖnce bir bisiklet kiralamalısınız.');
+                return;
+            }
+
+            // Check if near a station (4 istasyon)
+            const playerPos = camera.position;
+            let nearStation = null;
+
+            for (let i = 1; i <= 4; i++) {
+                const pos = stationMapPositions[i];
+                const stationPos = new THREE.Vector3(pos.x, 0, pos.z);
+                if (playerPos.distanceTo(stationPos) < 8) {
+                    nearStation = i;
+                    break;
+                }
+            }
+
+            if (!nearStation) {
+                console.log('❌ BAŞARISIZ: İstasyona yakın değilsiniz!');
+                alert('⚠️ İstasyona yakın değilsiniz!\n\nBir istasyonun yakınına gidin.');
+                return;
+            }
+
+            console.log('✅ BAŞARILI: İstasyon', nearStation, 'yakınında');
+
+            scanIndicator.style.display = 'block';
+            scanIndicator.textContent = '🅿️ Park Ediliyor...';
+
+            setTimeout(() => {
+                scanIndicator.textContent = '✓ Park Başarılı!';
+                console.log('✅ BAŞARILI: Bisiklet park edildi!');
+
+                setTimeout(() => {
+                    scanIndicator.style.display = 'none';
+
+                    const bikeId = rentedBike.userData.bikeId;
+                    console.log('🚲 Bisiklet #' + bikeId + ' İstasyon', nearStation + '\'e park edildi');
+
+                    // Hide handlebar view
+                    document.getElementById('handlebar-view').style.display = 'none';
+
+                    // İstasyonu bul ve bisikleti oraya ekle
+                    const stationGroups = { 1: station1, 2: station2, 3: station3, 4: station4 };
+                    const stationGroup = stationGroups[nearStation];
+                    const stats = stationStats['station' + nearStation];
+
+                    // Bisikleti görünür yap ve istasyona ekle
+                    rentedBike.visible = true;
+                    rentedBike.userData.isAvailable = true;
+                    rentedBike.userData.stationNumber = nearStation;
+
+                    // Bisikleti eski ebeveyninden çıkar
+                    if (rentedBike.parent) {
+                        rentedBike.parent.remove(rentedBike);
+                    }
+
+                    // Bisikleti istasyona ekle - doğru pozisyona yerleştir
+                    // Mevcut bisiklet sayısına göre pozisyon hesapla
+                    const slotIndex = stats.occupied;
+                    const numSlots = stats.total;
+                    const xOffset = slotIndex * 0.8 - (numSlots * 0.8) / 2 + 0.4;
+
+                    rentedBike.position.set(xOffset, 0.2, 0);
+                    rentedBike.rotation.y = Math.random() * 0.2 - 0.1;
+                    stationGroup.add(rentedBike);
+
+                    console.log('🚴‍♂️ Bisikletten indiniz ve park ettiniz!');
+
+                    alert(`✓ Bisiklet #${bikeId} park edildi!\n\nİstasyon ${nearStation}\n\nTeşekkürler! 🚲`);
+
+                    // Reset rented bike and ride info
+                    rentedBike = null;
+                    rideStartTime = null;
+                    rideBattery = 100;
+
+                    // Update stats
+                    const parkStats = stationStats['station' + nearStation];
+                    parkStats.occupied++;
+                    parkStats.available--;
+                    console.log('📊 İstasyon ' + nearStation + ' güncellendi:', parkStats);
+                    updateStatsDisplay();
+
+                    // Telefonu kapat
+                    if (isPhoneOpen) {
+                        togglePhone();
+                    }
+                }, 800);
+            }, 1500);
+        }
+
+        // Player movement
+        const movement = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false,
+            jump: false,
+            shift: false
+        };
+        
+        let yVelocity = 0;
+        const gravity = -0.015;
+        const jumpPower = 0.3;
+        let isGrounded = true;
+        
+        // Mouse look
+        let mouseX = 0;
+        let mouseY = 0;
+        let phi = 0;
+        let theta = 0;
+        let isMouseDown = false;
+        let isPointerLocked = false;
+        
+        // Pointer lock change handler
+        document.addEventListener('pointerlockchange', () => {
+            isPointerLocked = document.pointerLockElement === renderer.domElement;
+        });
+        
+        // Mouse movement for camera
+        document.addEventListener('mousemove', (e) => {
+            if (isPointerLocked) {
+                // Pointer lock mode
+                mouseX += e.movementX;
+                mouseY += e.movementY;
+                
+                phi = (mouseY * 0.005);
+                phi = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, phi));
+                theta = (mouseX * 0.005);
+            } else if (isMouseDown) {
+                // Drag mode (fallback)
+                theta -= e.movementX * 0.005;
+                phi -= e.movementY * 0.005;
+                phi = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, phi));
+            }
+        });
+        
+        // Mouse down/up for drag mode
+        renderer.domElement.addEventListener('mousedown', () => {
+            isMouseDown = true;
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+        
+        // Click to request pointer lock
+        renderer.domElement.addEventListener('click', () => {
+            if (!isPointerLocked) {
+                renderer.domElement.requestPointerLock();
+            }
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            // Don't process movement keys when phone is open
+            if (isPhoneOpen && e.key.toLowerCase() !== 'e' && e.key !== 'Escape') {
+                return;
+            }
+            
+            switch(e.key.toLowerCase()) {
+                case 'w': case 'arrowup': movement.forward = true; break;
+                case 's': case 'arrowdown': movement.backward = true; break;
+                case 'a': case 'arrowleft': movement.left = true; break;
+                case 'd': case 'arrowright': movement.right = true; break;
+                case ' ': if (isGrounded && !isPhoneOpen) { movement.jump = true; yVelocity = jumpPower; } break;
+                case 'shift': movement.shift = true; break;
+                case 'e':
+                    if (isPhoneOpen) {
+                        // Telefon açıksa kapat
+                        togglePhone();
+                    } else if (isNearATM()) {
+                        // ATM'ye yakınsa para çek
+                        withdrawFromATM();
+                    } else if (rentedBike) {
+                        // Kiralanmış bisiklet varsa, telefonu aç ve sürüş bilgilerini göster
+                        togglePhone();
+                        showRideInfo();
+                    } else {
+                        // Yakındaki bisikleti kontrol et
+                        const nearbyBike = getNearbyBike();
+                        if (nearbyBike) {
+                            // Telefonu aç ve bisiklet detaylarını göster
+                            togglePhone();
+                            showBikeDetail(nearbyBike);
+                        } else {
+                            // Sadece telefonu aç
+                            togglePhone();
+                        }
+                    }
+                    break;
+                case 'escape': if (isPhoneOpen) togglePhone(); break;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (isPhoneOpen) return;
+            
+            switch(e.key.toLowerCase()) {
+                case 'w': case 'arrowup': movement.forward = false; break;
+                case 's': case 'arrowdown': movement.backward = false; break;
+                case 'a': case 'arrowleft': movement.left = false; break;
+                case 'd': case 'arrowright': movement.right = false; break;
+                case 'shift': movement.shift = false; break;
+            }
+        });
+        
+        // Animation loop
+        let clock = new THREE.Clock();
+        let time = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            time += delta;
+            const speed = movement.shift ? 0.3 : 0.15;
+
+            // Update camera rotation
+            const lookDirection = new THREE.Vector3(
+                Math.sin(theta) * Math.cos(phi),
+                Math.sin(phi),
+                Math.cos(theta) * Math.cos(phi)
+            );
+
+            camera.lookAt(
+                camera.position.x + lookDirection.x,
+                camera.position.y + lookDirection.y,
+                camera.position.z + lookDirection.z
+            );
+
+            // Movement
+            const forward = new THREE.Vector3(Math.sin(theta), 0, Math.cos(theta));
+            const right = new THREE.Vector3(Math.sin(theta + Math.PI / 2), 0, Math.cos(theta + Math.PI / 2));
+
+            if (movement.forward) camera.position.addScaledVector(forward, speed);
+            if (movement.backward) camera.position.addScaledVector(forward, -speed);
+            if (movement.left) camera.position.addScaledVector(right, speed);
+            if (movement.right) camera.position.addScaledVector(right, -speed);
+
+            // Gravity and ground check
+            yVelocity += gravity;
+            camera.position.y += yVelocity;
+
+            if (camera.position.y <= 2) {
+                camera.position.y = 2;
+                yVelocity = 0;
+                isGrounded = true;
+                movement.jump = false;
+            } else {
+                isGrounded = false;
+            }
+
+            // Check for nearby bike and show prompt
+            const interactPrompt = document.getElementById('interact-prompt');
+            if (!isPhoneOpen && isNearATM()) {
+                // ATM'ye yakınsa (öncelikli)
+                interactPrompt.style.display = 'block';
+                interactPrompt.innerHTML = 'Para Çekmek İçin<br><span class="key" style="background: #1a5276;">E</span> Tuşuna Basın';
+            } else if (!isPhoneOpen && !rentedBike) {
+                const nearbyBike = getNearbyBike();
+                if (nearbyBike) {
+                    interactPrompt.style.display = 'block';
+                    interactPrompt.innerHTML = 'Bisiklet Kiralamak İçin<br><span class="key">E</span> Tuşuna Basın';
+                } else {
+                    interactPrompt.style.display = 'none';
+                }
+            } else if (!isPhoneOpen && rentedBike) {
+                // Check if near a station for parking (4 istasyon)
+                const playerPos = camera.position;
+                let nearStation = null;
+
+                for (let i = 1; i <= 4; i++) {
+                    const pos = stationMapPositions[i];
+                    const stationPos = new THREE.Vector3(pos.x, 0, pos.z);
+                    if (playerPos.distanceTo(stationPos) < 8) {
+                        nearStation = i;
+                        break;
+                    }
+                }
+
+                if (nearStation) {
+                    interactPrompt.style.display = 'block';
+                    interactPrompt.innerHTML = 'Sürüşü Bitirmek İçin<br><span class="key park">E</span> Tuşuna Basın';
+                } else {
+                    interactPrompt.style.display = 'none';
+                }
+            } else {
+                interactPrompt.style.display = 'none';
+            }
+
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        animate();
+    </script>
+</body>
+</html>
