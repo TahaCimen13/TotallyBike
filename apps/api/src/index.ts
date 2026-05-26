@@ -21,6 +21,7 @@ import { stationsRouter } from './routes/stations';
 import { bikesRouter } from './routes/bikes';
 import { ridesRouter } from './routes/rides';
 import { walletRouter } from './routes/wallet';
+import { adminRouter } from './routes/admin';
 import { errorHandler } from './middleware/errorHandler';
 
 export const prisma = new PrismaClient();
@@ -51,6 +52,7 @@ app.use('/api/stations', stationsRouter);
 app.use('/api/bikes', bikesRouter);
 app.use('/api/rides', ridesRouter);
 app.use('/api/wallet', walletRouter);
+app.use('/api/admin', adminRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

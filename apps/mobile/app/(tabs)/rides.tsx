@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiFetch } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -21,13 +21,37 @@ export default function RidesScreen() {
   const [rides, setRides] = useState<RideData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchRides = useCallback(async () => {
     if (!user) { setLoading(false); return; }
-    apiFetch<RideData[]>('/api/rides').then((res) => {
-      if (res.success && res.data) setRides(res.data);
-      setLoading(false);
-    });
+    const res = await apiFetch<RideData[]>('/api/rides');
+    if (res.success && res.data) setRides(res.data);
+    setLoading(false);
   }, [user]);
+
+  useEffect(() => { fetchRides(); }, [fetchRides]);
+
+  const cancelRide = async (rideId: string) => {
+    Alert.alert(
+      'Sürüşü İptal Et',
+      'Sürüşünüzü iptal etmek istiyor musunuz? Kilit açma ücreti iade edilecek.',
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'İptal Et',
+          style: 'destructive',
+          onPress: async () => {
+            const res = await apiFetch(`/api/rides/${rideId}/cancel`, { method: 'POST' });
+            if (res.success) {
+              Alert.alert('İptal Edildi', `${(res.data as any)?.refunded?.toFixed(2) ?? '5.00'} TL iade edildi.`);
+              fetchRides();
+            } else {
+              Alert.alert('Hata', (res as any).error || 'İptal edilemedi');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (!user) {
     return (
@@ -45,7 +69,7 @@ export default function RidesScreen() {
   const formatDuration = (start: string, end: string | null) => {
     if (!end) return 'Devam ediyor';
     const mins = Math.floor((new Date(end).getTime() - new Date(start).getTime()) / 60000);
-    return `${mins} dk`;
+    return mins < 60 ? `${mins} dk` : `${Math.floor(mins / 60)} sa ${mins % 60} dk`;
   };
 
   const formatDate = (date: string) =>
@@ -66,9 +90,16 @@ export default function RidesScreen() {
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.bikeCode}>{item.bike.qrCode}</Text>
-                <View style={[styles.badge, item.status === 'active' ? styles.badgeActive : styles.badgeComplete]}>
-                  <Text style={[styles.badgeText, { color: item.status === 'active' ? '#60a5fa' : '#10b981' }]}>
-                    {item.status === 'active' ? 'Aktif' : 'Tamamlandı'}
+                <View style={[
+                  styles.badge,
+                  item.status === 'active' ? styles.badgeActive :
+                  item.status === 'cancelled' ? styles.badgeCancelled : styles.badgeComplete,
+                ]}>
+                  <Text style={[styles.badgeText, {
+                    color: item.status === 'active' ? '#60a5fa' :
+                           item.status === 'cancelled' ? '#f59e0b' : '#10b981',
+                  }]}>
+                    {item.status === 'active' ? 'Aktif' : item.status === 'cancelled' ? 'İptal' : 'Tamamlandı'}
                   </Text>
                 </View>
               </View>
@@ -80,6 +111,11 @@ export default function RidesScreen() {
                 <Text style={styles.meta}>{formatDuration(item.startTime, item.endTime)}</Text>
                 <Text style={styles.cost}>{item.cost.toFixed(2)} TL</Text>
               </View>
+              {item.status === 'active' && (
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => cancelRide(item.id)}>
+                  <Text style={styles.cancelBtnText}>Sürüşü İptal Et</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         />
@@ -97,11 +133,14 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
   badgeActive: { backgroundColor: 'rgba(96,165,250,0.15)' },
   badgeComplete: { backgroundColor: 'rgba(16,185,129,0.15)' },
+  badgeCancelled: { backgroundColor: 'rgba(245,158,11,0.15)' },
   badgeText: { fontSize: 12, fontWeight: '700' },
   route: { fontSize: 14, color: '#aaa', marginBottom: 10 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between' },
   meta: { fontSize: 12, color: '#666' },
   cost: { fontSize: 15, fontWeight: '800', color: '#10b981' },
+  cancelBtn: { marginTop: 10, backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: '#ef4444', borderRadius: 8, padding: 10, alignItems: 'center' },
+  cancelBtnText: { color: '#ef4444', fontSize: 13, fontWeight: '700' },
   loginBtn: { backgroundColor: '#10b981', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 10 },
   loginBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });

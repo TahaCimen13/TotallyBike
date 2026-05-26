@@ -14,6 +14,7 @@ export const BIKE_STATUS = {
 export const RIDE_STATUS = {
   ACTIVE: 'active',
   COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
 } as const;
 
 export const SOCKET_EVENTS = {

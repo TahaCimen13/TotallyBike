@@ -188,7 +188,9 @@ export default function MapScreen() {
           </View>
           <View style={styles.rideCardBottom}>
             <Text style={styles.rideCardInfo}>Batarya: {activeRide.bike.batteryLevel}%</Text>
-            <Text style={styles.rideCardInfo}>Başlangıç: {activeRide.startStation.name}</Text>
+            <Text style={styles.rideCardInfo}>
+              Tahmini: {(5 + Math.max(0, Math.floor(elapsed / 60) - 15) * 0.5).toFixed(2)} TL
+            </Text>
           </View>
           <TouchableOpacity
             style={styles.endRideBtn}

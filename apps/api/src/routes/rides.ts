@@ -19,7 +19,6 @@ ridesRouter.get('/', async (req: AuthRequest, res, next) => {
       },
       orderBy: { startTime: 'desc' },
     });
-
     res.json({ success: true, data: rides });
   } catch (err) {
     next(err);
@@ -36,8 +35,70 @@ ridesRouter.get('/active', async (req: AuthRequest, res, next) => {
         startStation: { select: { id: true, name: true } },
       },
     });
-
     res.json({ success: true, data: ride });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get single ride detail
+ridesRouter.get('/:id', async (req: AuthRequest, res, next) => {
+  try {
+    const ride = await prisma.ride.findFirst({
+      where: { id: req.params.id as string, userId: req.userId },
+      include: {
+        bike: { select: { qrCode: true, batteryLevel: true } },
+        startStation: { select: { name: true, latitude: true, longitude: true } },
+        endStation: { select: { name: true, latitude: true, longitude: true } },
+      },
+    });
+    if (!ride) {
+      res.status(404).json({ success: false, error: 'Ride not found' });
+      return;
+    }
+    res.json({ success: true, data: ride });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Cancel active ride (refund unlock fee)
+ridesRouter.post('/:id/cancel', async (req: AuthRequest, res, next) => {
+  try {
+    const ride = await prisma.ride.findFirst({
+      where: { id: req.params.id as string, userId: req.userId, status: 'active' },
+    });
+    if (!ride) {
+      res.status(404).json({ success: false, error: 'Aktif sürüş bulunamadı' });
+      return;
+    }
+
+    const now = new Date();
+    const minutes = Math.ceil((now.getTime() - ride.startTime.getTime()) / 60000);
+    if (minutes > 2) {
+      res.status(400).json({ success: false, error: 'Sürüş başladıktan 2 dakika sonra iptal edilemez' });
+      return;
+    }
+
+    await prisma.$transaction([
+      prisma.ride.update({
+        where: { id: ride.id },
+        data: { status: 'cancelled', endTime: now },
+      }),
+      prisma.bike.update({
+        where: { id: ride.bikeId },
+        data: { status: 'available', stationId: ride.startStationId },
+      }),
+      prisma.user.update({
+        where: { id: req.userId },
+        data: { balance: { increment: PRICING.UNLOCK_FEE } },
+      }),
+    ]);
+
+    io.emit(SOCKET_EVENTS.RIDE_ENDED, { rideId: ride.id });
+    io.emit(SOCKET_EVENTS.STATION_UPDATE, { stationId: ride.startStationId });
+
+    res.json({ success: true, data: { refunded: PRICING.UNLOCK_FEE } });
   } catch (err) {
     next(err);
   }
@@ -60,53 +121,42 @@ ridesRouter.post('/:id/end', async (req: AuthRequest, res, next) => {
       return;
     }
 
-    // Check station exists and has space
     const station = await prisma.station.findUnique({
       where: { id: stationId },
-      include: { bikes: true },
+      include: { bikes: { where: { status: { in: ['available', 'maintenance'] } } } },
     });
     if (!station) {
       res.status(404).json({ success: false, error: 'Station not found' });
       return;
     }
     if (station.bikes.length >= station.totalSlots) {
-      res.status(400).json({ success: false, error: 'Station is full' });
+      res.status(400).json({ success: false, error: 'İstasyon dolu' });
       return;
     }
 
-    // Calculate cost
     const now = new Date();
     const minutes = Math.ceil((now.getTime() - ride.startTime.getTime()) / 60000);
     const extraMinutes = Math.max(0, minutes - PRICING.FREE_MINUTES);
     const totalCost = PRICING.UNLOCK_FEE + extraMinutes * PRICING.PER_MINUTE_RATE;
-    const additionalCost = totalCost - ride.cost; // ride.cost already has UNLOCK_FEE
+    const additionalCost = totalCost - ride.cost;
 
-    // Transaction: end ride, dock bike, charge user
     const [updatedRide] = await prisma.$transaction([
       prisma.ride.update({
         where: { id: ride.id },
-        data: {
-          endStationId: stationId,
-          endTime: now,
-          cost: totalCost,
-          status: 'completed',
-        },
+        data: { endStationId: stationId, endTime: now, cost: totalCost, status: 'completed' },
       }),
       prisma.bike.update({
         where: { id: ride.bikeId },
         data: { status: 'available', stationId },
       }),
       ...(additionalCost > 0
-        ? [
-            prisma.user.update({
-              where: { id: req.userId },
-              data: { balance: { decrement: additionalCost } },
-            }),
-          ]
+        ? [prisma.user.update({
+            where: { id: req.userId },
+            data: { balance: { decrement: additionalCost } },
+          })]
         : []),
     ]);
 
-    // Emit realtime events
     io.emit(SOCKET_EVENTS.RIDE_ENDED, { rideId: ride.id });
     io.emit(SOCKET_EVENTS.STATION_UPDATE, { stationId });
     io.emit(SOCKET_EVENTS.STATION_UPDATE, { stationId: ride.startStationId });

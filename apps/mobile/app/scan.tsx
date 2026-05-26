@@ -57,11 +57,11 @@ export default function ScanScreen() {
 
     const res = await apiFetch(`/api/bikes/${bike.id}/unlock`, { method: 'POST' });
     if (res.success) {
-      Alert.alert('Başarılı', 'Bisiklet kilidi açıldı! İyi sürüşler!', [
-        { text: 'Tamam', onPress: () => router.back() },
+      Alert.alert('Kilit Açıldı!', 'Bisikletiniz hazır. İyi sürüşler! 🚲', [
+        { text: 'Tamam', onPress: () => router.replace('/(tabs)') },
       ]);
     } else {
-      Alert.alert('Hata', res.error || 'Kilit açılamadı');
+      Alert.alert('Hata', (res as any).error || 'Kilit açılamadı');
     }
     setLoading(false);
   };

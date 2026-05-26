@@ -104,7 +104,14 @@ bikesRouter.post('/:id/unlock', authMiddleware, async (req: AuthRequest, res, ne
       try {
         await publishUnlock(stationForUnlock.dockId, ride.id);
       } catch (err) {
-        console.error('[Unlock] MQTT publish failed for ride', ride.id, err);
+        console.error('[Unlock] MQTT publish failed — rolling back ride', ride.id, err);
+        await prisma.$transaction([
+          prisma.ride.delete({ where: { id: ride.id } }),
+          prisma.bike.update({ where: { id: bike.id }, data: { status: 'available', stationId } }),
+          prisma.user.update({ where: { id: req.userId }, data: { balance: { increment: PRICING.UNLOCK_FEE } } }),
+        ]);
+        res.status(503).json({ success: false, error: 'Kilit sistemi şu an yanıt vermiyor, lütfen tekrar deneyin' });
+        return;
       }
     }
 
