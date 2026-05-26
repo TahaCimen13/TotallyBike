@@ -605,22 +605,22 @@
                     <canvas id="map-canvas"></canvas>
                     <div id="station1-marker" class="map-marker station-marker" onclick="selectStation(1)">
                         <div class="station-icon">🅿️</div>
-                        <div class="station-name">Kuzey</div>
+                        <div class="station-name">Metro</div>
                         <div id="station1-count" style="font-size: 10px; color: #00CC66; font-weight: 700;">5/8</div>
                     </div>
                     <div id="station2-marker" class="map-marker station-marker" onclick="selectStation(2)">
                         <div class="station-icon">🅿️</div>
-                        <div class="station-name">Batı</div>
+                        <div class="station-name">Kütüphane</div>
                         <div id="station2-count" style="font-size: 10px; color: #00CC66; font-weight: 700;">4/6</div>
                     </div>
                     <div id="station3-marker" class="map-marker station-marker" onclick="selectStation(3)">
                         <div class="station-icon">🅿️</div>
-                        <div class="station-name">Doğu</div>
+                        <div class="station-name">Müh. Binası</div>
                         <div id="station3-count" style="font-size: 10px; color: #00CC66; font-weight: 700;">3/6</div>
                     </div>
                     <div id="station4-marker" class="map-marker station-marker" onclick="selectStation(4)">
                         <div class="station-icon">🅿️</div>
-                        <div class="station-name">Güney</div>
+                        <div class="station-name">Öğr. Merkezi</div>
                         <div id="station4-count" style="font-size: 10px; color: #00CC66; font-weight: 700;">6/8</div>
                     </div>
                     <div class="map-marker user-marker" id="user-position"></div>
@@ -853,10 +853,10 @@
         
         // Station statistics
         const stationStats = {
-            station1: { total: 8, occupied: 5, available: 3, name: 'Kuzey İstasyon' },
-            station2: { total: 6, occupied: 4, available: 2, name: 'Batı İstasyon' },
-            station3: { total: 6, occupied: 3, available: 3, name: 'Doğu İstasyon' },
-            station4: { total: 8, occupied: 6, available: 2, name: 'Güney İstasyon' }
+            station1: { total: 8, occupied: 5, available: 3, name: 'Ayazağa Metro Girişi' },
+            station2: { total: 6, occupied: 4, available: 2, name: 'Kütüphane' },
+            station3: { total: 6, occupied: 3, available: 3, name: 'Mühendislik Binası' },
+            station4: { total: 8, occupied: 6, available: 2, name: 'Öğrenci Merkezi' }
         };
         
         // Track all bikes in the scene
@@ -1234,7 +1234,7 @@
         scene.add(campus);
 
         
-        // Bahçeşehir Üniversitesi Binası
+        // İTÜ Ana Bina
         function createBuilding() {
             const building = new THREE.Group();
 
@@ -1782,7 +1782,7 @@
         allBikes.push(testBike);
         scene.add(testBike);
 
-        console.log('🚲 PISI BikeApp - Bahçeşehir Üniversitesi Başlatıldı!');
+        console.log('🚲 PISI BikeApp - İTÜ Ayazağa Kampüsü Başlatıldı!');
         console.log('📍 4 İstasyon: Kuzey, Batı, Doğu, Güney');
         console.log('🚴 Mavi yollar bisiklet yoludur');
         console.log('🏧 ATM Batı istasyonu yanında');
@@ -1875,27 +1875,27 @@
                 mapCtx.fillRect(doguX - 10 + i * 4, roadY - 18, 2, 36);
             }
 
-            // Bahçeşehir Üniversitesi Binası
+            // İTÜ Ana Bina
             const buildingX = centerX - 45;
             const buildingY = centerY + (-5) * scale - 30;
             mapCtx.fillStyle = '#1a1a2e';
             mapCtx.fillRect(buildingX, buildingY, 90, 55);
 
-            // BAU logosu
-            mapCtx.fillStyle = '#0096FF';
+            // İTÜ logosu
+            mapCtx.fillStyle = '#CC0000';
             mapCtx.beginPath();
             mapCtx.arc(buildingX + 20, buildingY + 27, 12, 0, Math.PI * 2);
             mapCtx.fill();
             mapCtx.fillStyle = '#ffffff';
             mapCtx.font = 'bold 8px Arial';
             mapCtx.textAlign = 'center';
-            mapCtx.fillText('BAU', buildingX + 20, buildingY + 30);
+            mapCtx.fillText('İTÜ', buildingX + 20, buildingY + 30);
 
             // Üniversite adı
             mapCtx.fillStyle = '#ffffff';
             mapCtx.font = 'bold 9px Arial';
             mapCtx.textAlign = 'left';
-            mapCtx.fillText('BAHÇEŞEHİR', buildingX + 35, buildingY + 24);
+            mapCtx.fillText('İSTANBUL TEKNİK', buildingX + 35, buildingY + 24);
             mapCtx.fillText('ÜNİVERSİTESİ', buildingX + 35, buildingY + 35);
 
             // ATM (Batı istasyonunun sağında, yolun kenarında)

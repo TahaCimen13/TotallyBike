@@ -14,7 +14,9 @@
     "dev:mobile": "turbo run dev --filter=mobile",
     "db:migrate": "turbo run db:migrate --filter=api",
     "db:seed": "turbo run db:seed --filter=api",
-    "db:push": "turbo run db:push --filter=api"
+    "db:push": "turbo run db:push --filter=api",
+    "setup": "npm install --legacy-peer-deps && npm run db:push && npm run db:seed",
+    "start": "turbo run dev --filter=api --filter=web"
   },
   "devDependencies": {
     "turbo": "^2.3.0",

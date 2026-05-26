@@ -21,57 +21,60 @@ async function main() {
     },
   });
 
-  // Create stations
-  // Boğaziçi Üniversitesi Güney Kampüs çevresi (tümü karada)
-  const northStation = await prisma.station.create({
+  // Create stations — İTÜ Ayazağa Kampüsü
+  const metroStation = await prisma.station.create({
     data: {
-      name: 'Kuzey İstasyon',
-      latitude: 41.0855,
-      longitude: 29.0510,
+      name: 'Ayazağa Metro Girişi',
+      latitude: 41.1046,
+      longitude: 28.6524,
       totalSlots: 8,
+      dockId: '01',
     },
   });
 
-  const westStation = await prisma.station.create({
+  const libraryStation = await prisma.station.create({
     data: {
-      name: 'Batı İstasyon',
-      latitude: 41.0838,
-      longitude: 29.0480,
+      name: 'Kütüphane',
+      latitude: 41.1068,
+      longitude: 28.6498,
       totalSlots: 6,
+      dockId: '02',
     },
   });
 
-  const eastStation = await prisma.station.create({
+  const engineeringStation = await prisma.station.create({
     data: {
-      name: 'Doğu İstasyon',
-      latitude: 41.0840,
-      longitude: 29.0545,
+      name: 'Mühendislik Binası',
+      latitude: 41.1085,
+      longitude: 28.6555,
       totalSlots: 6,
+      dockId: '03',
     },
   });
 
-  const southStation = await prisma.station.create({
+  const studentCenterStation = await prisma.station.create({
     data: {
-      name: 'Güney İstasyon',
-      latitude: 41.0820,
-      longitude: 29.0515,
+      name: 'Öğrenci Merkezi',
+      latitude: 41.1028,
+      longitude: 28.6558,
       totalSlots: 8,
+      dockId: '04',
     },
   });
 
   // Create bikes for each station
   const stations = [
-    { station: northStation, count: 5 },
-    { station: westStation, count: 4 },
-    { station: eastStation, count: 3 },
-    { station: southStation, count: 6 },
+    { station: metroStation, count: 5 },
+    { station: libraryStation, count: 4 },
+    { station: engineeringStation, count: 3 },
+    { station: studentCenterStation, count: 6 },
   ];
 
   for (const { station, count } of stations) {
     for (let i = 1; i <= count; i++) {
       await prisma.bike.create({
         data: {
-          qrCode: `${station.name.split(' ')[0].toUpperCase()}-BIKE-${String(i).padStart(3, '0')}`,
+          qrCode: `${station.dockId}-BIKE-${String(i).padStart(3, '0')}`,
           batteryLevel: Math.floor(Math.random() * 40) + 60, // 60-100%
           status: 'available',
           stationId: station.id,
@@ -86,11 +89,11 @@ async function main() {
       qrCode: 'MAINT-BIKE-001',
       batteryLevel: 15,
       status: 'maintenance',
-      stationId: northStation.id,
+      stationId: metroStation.id,
     },
   });
 
-  console.log('Seed data created successfully!');
+  console.log('Seed data created successfully — İTÜ Ayazağa');
 }
 
 main()

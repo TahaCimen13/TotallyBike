@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PISI · Hardware Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0e;
+    --bg-2: #15151a;
+    --bg-3: #1c1c22;
+    --border: #28282f;
+    --border-bright: #3a3a44;
+    --text: #e8e4d8;
+    --text-mute: #8a877e;
+    --text-dim: #5a5852;
+    --amber: #d4823a;
+    --amber-bright: #ffb86b;
+    --amber-glow: rgba(255, 184, 107, 0.4);
+    --power: #c64545;
+    --power-glow: rgba(198, 69, 69, 0.35);
+    --gnd: #44443f;
+    --gpio: #5a5852;
+    --wire-orange: #d4823a;
+    --wire-black: #4a4844;
+    --wire-red: #c64545;
+    --wire-yellow: #d4b13a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(212, 130, 58, 0.06) 0%, transparent 35%),
+      radial-gradient(circle at 85% 80%, rgba(95, 179, 217, 0.04) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(13, 13, 14, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .brand .logo {
+    color: var(--amber);
+    font-size: 18px;
+  }
+  .brand .name {
+    font-size: 16px;
+    color: var(--text);
+  }
+  .brand .sub {
+    color: var(--text-mute);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    border-left: 1px solid var(--border-bright);
+    padding-left: 12px;
+  }
+
+  .step-selector {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .step-selector button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-mute);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 6px 12px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 150ms ease;
+  }
+  .step-selector button:hover:not(:disabled) {
+    border-color: var(--border-bright);
+    color: var(--text);
+  }
+  .step-selector button.active {
+    background: var(--amber);
+    color: #1a1208;
+    border-color: var(--amber);
+    font-weight: 700;
+  }
+  .step-selector button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .step-selector button .stub {
+    color: var(--text-dim);
+    font-style: italic;
+    margin-left: 4px;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    position: relative;
+    z-index: 1;
+  }
+  @media (max-width: 880px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  /* ============ PIN PANEL (left, sticky) ============ */
+  .pin-panel {
+    border-right: 1px solid var(--border);
+    padding: 24px;
+    position: sticky;
+    top: 60px;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    background: var(--bg);
+  }
+  @media (max-width: 880px) {
+    .pin-panel { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  .panel-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-mute);
+    margin-bottom: 4px;
+  }
+  .panel-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+  }
+  .panel-meta span { color: var(--amber); }
+
+  .pi-board {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    padding: 14px 12px 16px;
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .pi-board::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 12px;
+    width: 30px;
+    height: 2px;
+    background: var(--amber);
+  }
+  .pi-board-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-mute);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+  .pi-board-label .pin1-marker {
+    color: var(--amber);
+  }
+
+  .pin-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0;
+    font-size: 11px;
+  }
+
+  .pin-row {
+    display: contents;
+  }
+  .pin-cell {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+    cursor: pointer;
+    transition: background 100ms ease;
+    user-select: none;
+    border: 1px solid transparent;
+    line-height: 1.3;
+  }
+  .pin-cell:hover {
+    background: var(--bg-3);
+  }
+  .pin-cell.left {
+    justify-content: flex-end;
+    text-align: right;
+    flex-direction: row;
+  }
+  .pin-cell.right {
+    justify-content: flex-start;
+    flex-direction: row-reverse;
+  }
+  .pin-cell .num {
+    color: var(--text-dim);
+    font-weight: 500;
+    min-width: 18px;
+    text-align: center;
+  }
+  .pin-cell .label {
+    margin: 0 8px;
+    font-weight: 500;
+  }
+  .pin-cell.left .label { color: var(--gpio); }
+  .pin-cell.right .label { color: var(--gpio); }
+
+  .pin-cell[data-type="power"] .label { color: var(--power); }
+  .pin-cell[data-type="gnd"] .label { color: var(--text-mute); }
+
+  .pin-cell .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gpio);
+    flex-shrink: 0;
+  }
+  .pin-cell[data-type="power"] .dot { background: var(--power); }
+  .pin-cell[data-type="gnd"] .dot { background: var(--gnd); }
+
+  .pin-cell.active {
+    background: rgba(212, 130, 58, 0.08);
+    border-color: var(--amber);
+  }
+  .pin-cell.active .label {
+    color: var(--amber-bright) !important;
+    text-shadow: 0 0 8px var(--amber-glow);
+  }
+  .pin-cell.active .dot {
+    background: var(--amber-bright);
+    box-shadow: 0 0 10px var(--amber-glow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .pin-cell.selected {
+    background: var(--bg-3);
+    border-color: var(--border-bright);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .pin-divider {
+    width: 1px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 10px;
+    color: var(--text-mute);
+    margin-bottom: 18px;
+    padding: 10px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+  }
+  .legend .key {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .legend .key::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--gpio);
+  }
+  .legend .key.power::before { background: var(--power); }
+  .legend .key.gnd::before { background: var(--gnd); }
+  .legend .key.active::before { background: var(--amber-bright); box-shadow: 0 0 6px var(--amber-glow); }
+
+  .pin-info {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    padding: 14px;
+    min-height: 88px;
+    font-size: 12px;
+  }
+  .pin-info .info-empty {
+    color: var(--text-dim);
+    font-style: italic;
+    text-align: center;
+    padding: 14px 0;
+  }
+  .pin-info .info-pin {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .pin-info .info-pin .num {
+    background: var(--bg-3);
+    color: var(--amber);
+    padding: 2px 8px;
+    font-weight: 700;
+    font-size: 11px;
+  }
+  .pin-info .info-pin .lbl {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .pin-info .info-pin .typ {
+    color: var(--text-mute);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-left: auto;
+  }
+  .pin-info .info-role {
+    color: var(--text-mute);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .pin-info .info-role strong {
+    color: var(--amber);
+    font-weight: 500;
+  }
+  .pin-info .info-unused {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 11px;
+  }
+
+  /* ============ STEP PANEL (right) ============ */
+  .step-panel {
+    padding: 32px 36px 80px;
+    max-width: 780px;
+  }
+
+  .step-head {
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0 20px;
+    align-items: baseline;
+  }
+  .step-head .num {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--amber);
+    font-weight: 400;
+    grid-row: 1 / 3;
+  }
+  .step-head h1 {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 38px;
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .step-head .tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-mute);
+    margin-bottom: 8px;
+  }
+  .step-head .desc {
+    color: var(--text-mute);
+    font-size: 13px;
+    margin-top: 14px;
+    max-width: 60ch;
+  }
+
+  .section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--amber);
+    margin: 32px 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    background: var(--amber);
+    border-radius: 50%;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .wiring {
+    list-style: none;
+    counter-reset: wiring;
+  }
+  .wiring li {
+    counter-increment: wiring;
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: start;
+  }
+  .wiring li:last-child { border-bottom: none; }
+  .wiring li::before {
+    content: counter(wiring, decimal-leading-zero);
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 500;
+    padding-top: 2px;
+  }
+  .wiring .conn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .wiring .from, .wiring .to {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .wiring .from { color: var(--text); }
+  .wiring .to { color: var(--text-mute); }
+  .wiring .arrow {
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+  .wiring .wire {
+    margin-left: auto;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border: 1px solid currentColor;
+  }
+  .wire.orange { color: var(--wire-orange); }
+  .wire.black { color: var(--text-mute); }
+  .wire.red { color: var(--wire-red); }
+  .wire.yellow { color: var(--wire-yellow); }
+  .wire.none { color: var(--text-dim); border-style: dashed; }
+
+  .wiring .note {
+    grid-column: 2;
+    color: var(--text-dim);
+    font-size: 11px;
+    margin-top: 6px;
+    padding-left: 2px;
+  }
+
+  .code-block {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .code-block header {
+    background: var(--bg-3);
+    border: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 14px;
+    position: static;
+    backdrop-filter: none;
+    font-size: 11px;
+    color: var(--text-mute);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .code-block header::before {
+    content: '$';
+    color: var(--amber);
+    font-weight: 700;
+  }
+  .code-block pre {
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .code-block .kw { color: #c678dd; }
+  .code-block .fn { color: var(--amber-bright); }
+  .code-block .num { color: #d19a66; }
+  .code-block .str { color: #98c379; }
+  .code-block .com { color: var(--text-dim); font-style: italic; }
+
+  .checks {
+    list-style: none;
+    margin-top: 4px;
+  }
+  .checks li {
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--border);
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    gap: 12px;
+    font-size: 12px;
+  }
+  .checks li:last-child { border-bottom: none; }
+  .checks li::before {
+    content: '◇';
+    color: var(--amber);
+    font-size: 14px;
+  }
+  .checks li b {
+    color: var(--text);
+    font-weight: 500;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .checks li span {
+    color: var(--text-mute);
+  }
+
+  .troubleshoot {
+    border: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .troubleshoot div {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .troubleshoot div:last-child { border-bottom: none; }
+  .troubleshoot .head {
+    background: var(--bg-2);
+    color: var(--amber);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 8px 14px;
+    border-right: 1px solid var(--border);
+  }
+  .troubleshoot .symptom {
+    padding: 12px 14px;
+    color: var(--text);
+    font-size: 12px;
+    border-right: 1px solid var(--border);
+    background: var(--bg-2);
+  }
+  .troubleshoot .fix {
+    padding: 12px 14px;
+    color: var(--text-mute);
+    font-size: 12px;
+  }
+
+  .placeholder {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+    border: 1px dashed var(--border);
+  }
+  .placeholder .ph-num {
+    font-family: 'Instrument Serif', serif;
+    font-size: 80px;
+    line-height: 1;
+    color: var(--text-dim);
+    opacity: 0.4;
+  }
+  .placeholder p {
+    margin-top: 12px;
+    font-size: 12px;
+  }
+  .placeholder .ph-soon {
+    color: var(--amber);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-top: 18px;
+  }
+
+  footer {
+    grid-column: 1 / -1;
+    padding: 20px 36px;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer .pulse {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--amber);
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--amber-glow);
+  }
+
+  /* ============ CIRCUIT DIAGRAM ============ */
+  .circuit-frame {
+    background: #0a0a0c;
+    border: 1px solid var(--border);
+    padding: 24px 16px;
+    margin: 12px 0;
+    overflow-x: auto;
+  }
+  .circuit-frame svg {
+    width: 100%;
+    height: auto;
+    min-width: 540px;
+    display: block;
+  }
+
+  /* SVG component styling */
+  .c-box { fill: #15151a; stroke: #3a3a44; stroke-width: 1; }
+  .c-box-pi { fill: #0d2540; stroke: #2a5a8c; }
+  .c-box-relay { fill: #1a0d2c; stroke: #5a3a6c; }
+  .c-box-power { fill: #2a1a08; stroke: #6c4520; }
+  .c-box-load { fill: #2a0c0c; stroke: #6c2828; }
+
+  .c-label { fill: #e8e4d8; font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+  .c-label-bold { fill: #e8e4d8; font-size: 12px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; }
+  .c-label-mute { fill: #8a877e; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+  .c-label-amber { fill: #ffb86b; font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .c-label-power { fill: #e87878; font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .c-label-gnd { fill: #888780; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+
+  .pin-dot { stroke-width: 0.5; stroke: #0a0a0c; }
+  .pin-dot-power { fill: #c64545; }
+  .pin-dot-gnd { fill: #5a5852; }
+  .pin-dot-gpio { fill: #d4b13a; }
+  .pin-dot-12v { fill: #d4823a; }
+  .pin-dot-out { fill: #d85a30; }
+
+  .wire { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .wire-red { stroke: #c64545; }
+  .wire-black { stroke: #5a5852; }
+  .wire-yellow { stroke: #d4b13a; }
+  .wire-orange { stroke: #d4823a; }
+  .wire-coral { stroke: #d85a30; }
+  .wire-existing { opacity: 0.35; stroke-dasharray: 4 3; }
+
+  .term-screw { fill: #88826c; stroke: #5a5852; stroke-width: 0.5; }
+
+  /* ============ COMPONENT GALLERY ============ */
+  .component-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin: 8px 0 16px;
+  }
+  .comp-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .comp-card .comp-svg {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .comp-card .comp-svg svg {
+    max-width: 100%;
+    max-height: 80px;
+  }
+  .comp-card .comp-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 4px;
+  }
+  .comp-card .comp-detail {
+    font-size: 10px;
+    color: var(--text-mute);
+    line-height: 1.4;
+  }
+  .comp-card .comp-warn {
+    font-size: 10px;
+    color: var(--amber);
+    margin-top: 2px;
+  }
+
+  /* ============ STEP-BY-STEP MICRO ============ */
+  .micro-steps {
+    list-style: none;
+    counter-reset: micro;
+    margin: 8px 0;
+    border-left: 1px solid var(--border-bright);
+    padding-left: 0;
+  }
+  .micro-steps li {
+    counter-increment: micro;
+    padding: 14px 0 14px 44px;
+    position: relative;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+    border-bottom: 1px dashed var(--border);
+  }
+  .micro-steps li:last-child { border-bottom: none; }
+  .micro-steps li::before {
+    content: counter(micro, decimal-leading-zero);
+    position: absolute;
+    left: -16px;
+    top: 12px;
+    background: var(--bg);
+    color: var(--amber);
+    font-size: 10px;
+    font-weight: 700;
+    width: 32px;
+    text-align: center;
+    border: 1px solid var(--amber);
+    padding: 3px 0;
+    letter-spacing: 0.05em;
+  }
+  .micro-steps li b { color: var(--amber-bright); font-weight: 600; }
+  .micro-steps li code {
+    background: var(--bg-3);
+    color: var(--amber-bright);
+    padding: 1px 6px;
+    font-size: 11px;
+    border: 1px solid var(--border);
+  }
+  .micro-steps li .sub-note {
+    color: var(--text-mute);
+    font-size: 11px;
+    display: block;
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* ============ CALLOUT (warnings, info) ============ */
+  .callout {
+    border-left: 3px solid var(--amber);
+    background: rgba(212, 130, 58, 0.06);
+    padding: 12px 14px;
+    margin: 14px 0;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .callout.danger {
+    border-left-color: var(--power);
+    background: rgba(198, 69, 69, 0.08);
+  }
+  .callout .callout-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--amber);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .callout.danger .callout-title { color: var(--power); }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--gpio); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="logo">◈</span>
+    <span class="name">PISI</span>
+    <span class="sub">Hardware Reference · v0.4</span>
+  </div>
+  <div class="step-selector" id="step-selector">
+    <button data-step="1" disabled>01 · setup</button>
+    <button data-step="2">02 · LED blink</button>
+    <button data-step="3">03 · röle</button>
+    <button data-step="4" class="active">04 · solenoid</button>
+    <button data-step="5">05 · status</button>
+    <button data-step="6" disabled>06 · GPS</button>
+    <button data-step="7" disabled>07 · MQTT</button>
+  </div>
+</header>
+
+<main>
+  <aside class="pin-panel">
+    <div class="panel-title">GPIO Header · J8</div>
+    <div class="panel-meta">Raspberry Pi 4B rev 1.5 · <span>BCM2711</span></div>
+
+    <div class="pi-board">
+      <div class="pi-board-label">
+        <span class="pin1-marker">▸ pin 1 (sd kart tarafı)</span>
+        <span>40 pin</span>
+      </div>
+      <div class="pin-grid" id="pin-grid"></div>
+    </div>
+
+    <div class="legend">
+      <span class="key power">power</span>
+      <span class="key gnd">gnd</span>
+      <span class="key">gpio</span>
+      <span class="key active">aktif</span>
+    </div>
+
+    <div class="pin-info" id="pin-info">
+      <div class="info-empty">Detay için bir pin seç</div>
+    </div>
+  </aside>
+
+  <section class="step-panel" id="step-panel">
+    <!-- step content rendered by JS -->
+  </section>
+
+  <footer>
+    <span><span class="pulse"></span>PISI BikeApp · prototip aşaması</span>
+    <span>Konya · Selçuk Üniversitesi pilot</span>
+  </footer>
+</main>
+
+<script>
+// ====================================================================
+// PIN MAP — Raspberry Pi 4 J8 header (BOARD numbering)
+// Each entry: [boardPin, label, type, gpioNum (or null)]
+// type: 'power' | 'gnd' | 'gpio'
+// ====================================================================
+const PINS = [
+  [1,  '3V3',    'power', null],   [2,  '5V',     'power', null],
+  [3,  'GPIO2',  'gpio',  2],      [4,  '5V',     'power', null],
+  [5,  'GPIO3',  'gpio',  3],      [6,  'GND',    'gnd',   null],
+  [7,  'GPIO4',  'gpio',  4],      [8,  'GPIO14', 'gpio',  14],
+  [9,  'GND',    'gnd',   null],   [10, 'GPIO15', 'gpio',  15],
+  [11, 'GPIO17', 'gpio',  17],     [12, 'GPIO18', 'gpio',  18],
+  [13, 'GPIO27', 'gpio',  27],     [14, 'GND',    'gnd',   null],
+  [15, 'GPIO22', 'gpio',  22],     [16, 'GPIO23', 'gpio',  23],
+  [17, '3V3',    'power', null],   [18, 'GPIO24', 'gpio',  24],
+  [19, 'GPIO10', 'gpio',  10],     [20, 'GND',    'gnd',   null],
+  [21, 'GPIO9',  'gpio',  9],      [22, 'GPIO25', 'gpio',  25],
+  [23, 'GPIO11', 'gpio',  11],     [24, 'GPIO8',  'gpio',  8],
+  [25, 'GND',    'gnd',   null],   [26, 'GPIO7',  'gpio',  7],
+  [27, 'GPIO0',  'gpio',  0],      [28, 'GPIO1',  'gpio',  1],
+  [29, 'GPIO5',  'gpio',  5],      [30, 'GND',    'gnd',   null],
+  [31, 'GPIO6',  'gpio',  6],      [32, 'GPIO12', 'gpio',  12],
+  [33, 'GPIO13', 'gpio',  13],     [34, 'GND',    'gnd',   null],
+  [35, 'GPIO19', 'gpio',  19],     [36, 'GPIO16', 'gpio',  16],
+  [37, 'GPIO26', 'gpio',  26],     [38, 'GPIO20', 'gpio',  20],
+  [39, 'GND',    'gnd',   null],   [40, 'GPIO21', 'gpio',  21],
+];
+
+// ====================================================================
+// PIN ROLES — assignments across the entire PISI prototype
+// Indexed by board pin number
+// ====================================================================
+const PIN_ROLES = {
+  2:  { use: '5V', detail: 'Röle modülü VCC (Adım 3+)' },
+  6:  { use: 'GND', detail: 'Röle GND, LED ortak GND (Adım 2+)' },
+  8:  { use: 'UART TX', detail: 'GPS modülü RX bağlantısı (Adım 6)' },
+  10: { use: 'UART RX', detail: 'GPS modülü TX bağlantısı (Adım 6)' },
+  11: { use: 'Yeşil LED', detail: 'Status: kilit açık (Adım 2 → Adım 5)' },
+  12: { use: 'Röle IN', detail: 'Solenoid kontrol sinyali, active-low (Adım 3+)' },
+  13: { use: 'Kırmızı LED', detail: 'Status: kilitli (Adım 5)' },
+  15: { use: 'Buzzer', detail: 'Sesli geri bildirim (Adım 5)' },
+};
+
+// ====================================================================
+// STEPS — wiring + code for each prototype phase
+// ====================================================================
+const STEPS = {
+  2: {
+    title: 'LED blink',
+    tag: 'donanım–yazılım köprüsü · ilk test',
+    desc: 'Tek LED + 220Ω direnç. Röle ve solenoid yok. Tek soru: GPIO yazılımdan kontrol ettiğimiz gerçek bir elektrik akımı üretiyor mu?',
+    activePins: [11, 6],
+    diagram: `
+      <svg viewBox="0 0 720 320">
+        <!-- Pi -->
+        ${COMPONENTS.pi(40, 60)}
+        ${COMPONENTS.pinPort(160, 110, 'Pin 11', 'GPIO17', 'gpio')}
+        ${COMPONENTS.pinPort(160, 200, 'Pin 6', 'GND', 'gnd')}
+
+        <!-- Breadboard area -->
+        <rect x="280" y="50" width="380" height="220" rx="6" fill="#f1efe8" opacity="0.95"/>
+        <text class="c-label-mute" x="470" y="40" text-anchor="middle">breadboard</text>
+
+        <!-- breadboard rows visualization -->
+        <text x="300" y="90" font-size="10" fill="#5a5852" font-family="JetBrains Mono">satır 1 (e1)</text>
+        <text x="300" y="160" font-size="10" fill="#5a5852" font-family="JetBrains Mono">satır 5 (e5)</text>
+        <text x="300" y="220" font-size="10" fill="#5a5852" font-family="JetBrains Mono">satır 6 (e6)</text>
+        <line x1="380" y1="86" x2="640" y2="86" stroke="#88826c" stroke-width="0.4"/>
+        <line x1="380" y1="156" x2="640" y2="156" stroke="#88826c" stroke-width="0.4"/>
+        <line x1="380" y1="216" x2="640" y2="216" stroke="#88826c" stroke-width="0.4"/>
+
+        <!-- Wire from Pi GPIO17 to e1 -->
+        <path d="M 164 110 L 240 110 L 240 86 L 380 86" class="wire wire-orange"/>
+        <text class="c-label-amber" x="220" y="100" font-size="9">turuncu</text>
+
+        <!-- Resistor between row 1 and row 5 (vertical) -->
+        ${COMPONENTS.resistor(440, 86)}
+        <line x1="440" y1="86" x2="440" y2="86" stroke="#5a5852" stroke-width="1.5"/>
+        <line x1="500" y1="86" x2="500" y2="156" stroke="#5a5852" stroke-width="1.5"/>
+        <text class="c-label-mute" x="510" y="120" font-size="9">220Ω direnç</text>
+
+        <!-- LED between row 5 and row 6 (vertical) -->
+        ${COMPONENTS.led(500, 186, '#34c759', '')}
+        <text class="c-label-mute" x="540" y="190" font-size="10">yeşil LED</text>
+        <text class="c-label-mute" x="540" y="204" font-size="9">A=anot, K=katot</text>
+
+        <!-- Wire from e6 back to GND Pin 6 -->
+        <path d="M 380 216 L 240 216 L 240 200 L 164 200" class="wire wire-black"/>
+        <text class="c-label-gnd" x="220" y="234" font-size="9">siyah</text>
+
+        <!-- Current flow arrow -->
+        <text class="c-label-mute" x="360" y="290" text-anchor="middle" font-size="10">akım yolu: GPIO17 → direnç → LED anot → LED katot → GND</text>
+      </svg>
+    `,
+    wiring: [
+      { from: 'Pi Pin 11 · GPIO17', to: 'breadboard e1', wire: 'orange', wireLabel: 'turuncu', note: 'Erkek-dişi jumper. Dişi uç Pi GPIO header\'ında.' },
+      { from: '220Ω direnç', to: 'a1 ↔ a5 (yatay)', wire: 'none', wireLabel: 'direnç', note: 'Yön bilmez. Bir bacağı 1. satıra, diğer bacağı 5. satıra.' },
+      { from: 'LED yeşil anot (uzun bacak)', to: 'e5', wire: 'none', wireLabel: 'led', note: 'Direnç ile aynı satırda olduğu için iç bağlantı.' },
+      { from: 'LED yeşil katot (kısa bacak)', to: 'e6', wire: 'none', wireLabel: 'led', note: 'Bacaklar eşit kesilmişse: gövdedeki düz kenar = katot.' },
+      { from: 'breadboard a6', to: 'Pi Pin 6 · GND', wire: 'black', wireLabel: 'siyah', note: 'Aynı satırdaki herhangi delik (a6/b6/c6/d6) olur. Devreyi toprağa kapatır.' },
+    ],
+    code: {
+      file: 'led_test.py',
+      content: `from gpiozero import LED
+from time import sleep
+
+led = LED(17)        # GPIO17 = Pin 11
+
+for _ in range(10):
+    led.on()         # GPIO HIGH → 3.3V → LED yanar
+    sleep(0.5)
+    led.off()        # GPIO LOW → 0V → LED söner
+    sleep(0.5)
+
+led.close()`
+    },
+    checks: [
+      { title: 'LED gerçekten yandı mı', detail: 'Yandıysa Pi gerçek dünyada elektrik kontrol ediyor demektir. Geri kalan her şey bunun üstüne kuruluyor.' },
+      { title: 'led.on() sonrası 0.5s sönük, 0.5s parlak', detail: 'Saniyede 1 cycle = 1 Hz blink. İnsan gözü için rahat görünür.' },
+      { title: 'KeyboardInterrupt ile durdurulabiliyor', detail: 'Ctrl+C ile loop\'u kesebilmelisin, REPL crash olmamalı.' },
+    ],
+    troubleshoot: [
+      { symptom: 'Hiç yanmıyor, kod hatasız', fix: 'LED ters takılı. 180° çevirip tekrar tak. (Anot uzun bacak.)' },
+      { symptom: 'Hiç yanmıyor, polarite doğru', fix: 'Sütun bağlantısı yanlış. a1 ile e1 fiziksel olarak aynı dikey sütun mu?' },
+      { symptom: 'Çok sönük yanıyor', fix: 'Direnç doğru değer mi? Renk: kırmızı–kırmızı–kahverengi–altın = 220Ω.' },
+      { symptom: 'gpiozero.exc.BadPinFactory', fix: 'Backend sorunu. sudo apt install -y python3-lgpio çalıştır, REPL\'i yeniden aç.' },
+      { symptom: 'PinPinFactoryFallback uyarısı', fix: 'İlgisiz, devam et. lgpio backend\'i normal şekilde devreye giriyor.' },
+    ]
+  },
+
+  3: {
+    title: 'röle modülü test',
+    tag: 'rölenin klik sesi · sinyal yolu testi',
+    desc: '5V röle modülünü Pi\'nin GPIO18 pini ile tetikle. Solenoid hâlâ devrede yok — sadece rölenin "klik" sesini ve modüldeki status LED\'inin yanmasını bekleyeceğiz. Bu, active-low mantığını ve sinyal yolunu izole etmek için yapılır.',
+    activePins: [2, 9, 12],
+    components: ['relay'],
+    diagram: `
+      <svg viewBox="0 0 720 360">
+        <!-- Pi header -->
+        ${COMPONENTS.pi(40, 60)}
+        ${COMPONENTS.pinPort(160, 100, 'Pin 2', '5V', 'power')}
+        ${COMPONENTS.pinPort(160, 150, 'Pin 9', 'GND', 'gnd')}
+        ${COMPONENTS.pinPort(160, 200, 'Pin 12', 'GPIO18', 'gpio')}
+
+        <!-- LED from step 2 still exists, faded -->
+        <text class="c-label-mute" x="40" y="280" font-size="10">— Adım 2 LED'i hâlâ takılı —</text>
+        <text class="c-label-mute" x="40" y="294" font-size="10">  Pin 11 → direnç → LED → Pin 6</text>
+
+        <!-- Relay module -->
+        ${COMPONENTS.relay(440, 60)}
+
+        <!-- Wires: 3 new connections -->
+        <path d="M 164 100 L 280 100 L 280 240 L 505 240 L 505 260" class="wire wire-red"/>
+        <path d="M 164 150 L 300 150 L 300 240 L 530 240 L 530 260" class="wire wire-black"/>
+        <path d="M 164 200 L 320 200 L 320 240 L 555 240 L 555 260" class="wire wire-yellow"/>
+
+        <!-- Wire labels -->
+        <text class="c-label-power" x="225" y="92">kırmızı · 5V</text>
+        <text class="c-label-mute" x="240" y="142">siyah · GND</text>
+        <text class="c-label-amber" x="255" y="192">sarı · sinyal</text>
+
+        <!-- COM/NC/NO note -->
+        <text class="c-label-mute" x="530" y="346" text-anchor="middle">vidalı terminaller bu adımda BOŞ</text>
+      </svg>
+    `,
+    wiring: [
+      { from: 'Pi Pin 2 · 5V', to: 'Röle VCC', wire: 'red', wireLabel: 'kırmızı', note: 'Erkek-dişi jumper. Dişi uç Pi\'da, erkek uç röle modülünün 3 pinli alt header\'ında.' },
+      { from: 'Pi Pin 9 · GND', to: 'Röle GND', wire: 'black', wireLabel: 'siyah', note: 'Pin 6 LED için kullanılıyor — Pin 9 başka bir GND, içeride aynı toprağa bağlı.' },
+      { from: 'Pi Pin 12 · GPIO18', to: 'Röle IN', wire: 'yellow', wireLabel: 'sarı', note: 'Active-low: GPIO LOW olunca röle çeker. initial_value=False ile boot\'ta GPIO HIGH başlatılır.' },
+    ],
+    code: {
+      file: 'relay_test.py',
+      content: `from gpiozero import OutputDevice
+from time import sleep
+
+# active_high=False  → on() çağrısı GPIO'yu LOW yapsın
+# initial_value=False → boot'ta GPIO HIGH (röle pasif) başlasın
+relay = OutputDevice(18, active_high=False, initial_value=False)
+
+print("3 kez aç-kapat:")
+
+for i in range(3):
+    print(f"[{i+1}] AKTİF — KLİK")
+    relay.on()
+    sleep(2)
+    print(f"[{i+1}] PASİF — KLİK")
+    relay.off()
+    sleep(2)
+
+relay.close()
+print("Test bitti.")`
+    },
+    checks: [
+      { title: 'PWR LED yanıyor', detail: 'Modülde sürekli yanan kırmızı LED. Pi açılır açılmaz yanar, kapanmaz. Yanmıyorsa VCC/GND kablosu kopuk.' },
+      { title: 'Her relay.on() bir KLİK çıkarıyor', detail: 'İçerideki metal kontak çekiyor, bu mekanik bir ses. Solid-state değil, gerçekten bir parça hareket ediyor.' },
+      { title: 'İkinci LED (status) on() ile yanıyor', detail: 'PWR\'ın yanında genelde yeşil bir LED daha var. Röle aktifken yanar, pasifken söner.' },
+      { title: 'Toplam 6 KLİK duyuluyor', detail: '3 cycle × 2 (aç + kapat) = 6 klik. Hepsi net ve eşit aralıklı olmalı.' },
+      { title: 'Pi boot anında röle çekmiyor', detail: 'initial_value=False işe yarıyor mu testi. Pi açılırken solenoid çekecek olsa kullanıcı için güvensiz olurdu.' },
+    ],
+    troubleshoot: [
+      { symptom: 'PWR LED hiç yanmıyor', fix: 'VCC veya GND kablosu yanlış pinde. Pi Pin 2 = 5V, herhangi GND pini olur. Etiketlere bak.' },
+      { symptom: 'Hiç klik yok, ikinci LED hiç yanmıyor', fix: 'IN kablosu yanlış pinde veya kopuk. Pin 12\'ye taktığından emin ol.' },
+      { symptom: 'on() deyince hiçbir şey, off() deyince klik', fix: 'active_high=True yazmışsın. Modül active-low, mantık ters. active_high=False olarak değiştir.' },
+      { symptom: 'Pi açılır açılmaz tek bir klik', fix: 'initial_value=False eksik. Bu olmadan GPIO başlangıçta belirsiz state\'te, röle bir an tetikleniyor.' },
+      { symptom: 'gpiozero.exc.GPIOPinInUse', fix: 'Önceki Python session kapanmamış. Ctrl+D ile çık, tekrar gir veya pkill python3.' },
+    ]
+  },
+
+  4: {
+    title: 'solenoid + flyback',
+    tag: 'ilk gerçek "kilit açma" anı',
+    desc: '12V adaptör → röle COM → röle NO → solenoid → 12V GND. Solenoid uçlarına paralel 1N4007 diyot (banded uç + tarafına). Pi 12V devresine HİÇBİR ŞEKİLDE bağlanmaz — röle galvanik izolasyon sağlar.',
+    activePins: [2, 9, 12],
+    components: ['adapter12v', 'solenoid', 'diode'],
+    diagram: `
+      <svg viewBox="0 0 720 460">
+        <!-- Title strip -->
+        <text class="c-label-mute" x="360" y="20" text-anchor="middle">12V güç hattı (Pi'den TAMAMEN ayrı)</text>
+
+        <!-- 12V Adapter -->
+        ${COMPONENTS.adapter12v(40, 40)}
+
+        <!-- Relay (just the screw terminal area for clarity) -->
+        <rect class="c-box c-box-relay" x="270" y="40" width="180" height="180" rx="6"/>
+        <text class="c-label-bold" x="360" y="62" text-anchor="middle">Röle</text>
+        <text class="c-label-mute" x="360" y="76" text-anchor="middle">vidalı terminaller</text>
+
+        <rect class="term-screw" x="288" y="100" width="44" height="40" rx="2"/>
+        <rect class="term-screw" x="338" y="100" width="44" height="40" rx="2"/>
+        <rect class="term-screw" x="388" y="100" width="44" height="40" rx="2"/>
+        <circle cx="310" cy="120" r="3" fill="#3a3a44"/>
+        <circle cx="360" cy="120" r="3" fill="#3a3a44"/>
+        <circle cx="410" cy="120" r="3" fill="#3a3a44"/>
+        <text class="c-label-bold" x="310" y="160" text-anchor="middle">NC</text>
+        <text class="c-label-bold" x="360" y="160" text-anchor="middle">COM</text>
+        <text class="c-label-bold" x="410" y="160" text-anchor="middle">NO</text>
+        <text class="c-label-mute" x="310" y="178" text-anchor="middle" font-size="9">boş</text>
+        <text class="c-label-power" x="360" y="178" text-anchor="middle" font-size="9">12V +</text>
+        <text class="c-label-power" x="410" y="178" text-anchor="middle" font-size="9">çıkış</text>
+
+        <!-- Pi reminder (Adım 3 connections) -->
+        <text class="c-label-mute" x="360" y="208" text-anchor="middle" font-size="10">↓ Pi → VCC/GND/IN (Adım 3'ten)</text>
+
+        <!-- Solenoid -->
+        ${COMPONENTS.solenoid(560, 40)}
+
+        <!-- Wire 1: Adapter + → COM (red) -->
+        <path d="M 78 100 L 78 130 L 222 130 L 222 120 L 308 120" class="wire wire-red"/>
+        <text class="c-label-power" x="180" y="124">+ 12V</text>
+
+        <!-- Wire 2: NO → Solenoid + (orange) -->
+        <path d="M 412 120 L 480 120 L 480 130 L 590 130" class="wire wire-coral"/>
+        <text class="c-label-amber" x="510" y="124">anahtarlanan +</text>
+
+        <!-- Wire 3: Solenoid - → Adapter - (black, long return) -->
+        <path d="M 660 130 L 700 130 L 700 320 L 132 320 L 132 100" class="wire wire-black"/>
+        <text class="c-label-gnd" x="400" y="316" text-anchor="middle">12V GND geri dönüş</text>
+
+        <!-- DIODE — paralel solenoid -->
+        <rect x="540" y="240" width="170" height="120" fill="#1a0f08" stroke="#d4823a" stroke-width="0.6" stroke-dasharray="3 3" rx="4"/>
+        <text class="c-label-amber" x="625" y="262" text-anchor="middle">FLYBACK BÖLGESİ</text>
+        <text class="c-label-mute" x="625" y="278" text-anchor="middle" font-size="9">solenoid uçlarına paralel</text>
+
+        ${COMPONENTS.diode(570, 320)}
+
+        <!-- Diode connection lines (parallel to solenoid) -->
+        <line x1="590" y1="130" x2="590" y2="320" stroke="#5a5852" stroke-width="1.5" stroke-dasharray="2 2"/>
+        <line x1="660" y1="130" x2="660" y2="320" stroke="#5a5852" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+        <text class="c-label-mute" x="572" y="350" text-anchor="middle" font-size="9">−'a</text>
+        <text class="c-label-amber" x="660" y="350" text-anchor="middle" font-size="9">+'ya (banded)</text>
+
+        <!-- Big warning -->
+        <text class="c-label-power" x="360" y="402" text-anchor="middle" font-size="11" font-weight="700">⚠ DİYOT TERS TAKILIRSA KISA DEVRE</text>
+        <text class="c-label-mute" x="360" y="420" text-anchor="middle" font-size="10">Bandın yönünü iki kez kontrol et: bant + tarafında olacak</text>
+      </svg>
+    `,
+    wiring: [
+      { from: '12V adaptör · + (yeşil terminal)', to: 'Röle COM (orta vida)', wire: 'red', wireLabel: 'kırmızı', note: 'Tek tel, iki tarafı sıyrılı. Yeşil terminal vidasına bir uç, röle COM vidasına diğer uç. Düz tornavida ile.' },
+      { from: 'Röle NO (sağ vida)', to: 'Solenoid + ucu', wire: 'coral', wireLabel: 'turuncu', note: 'Solenoid genelde 2 telli beyaz konnektör ile gelir. Konnektörü kesip telleri sıyır, ya da iki erkek jumper\'ı konnektörün içine sokup vidaya tak. + ucu kırmızı tel olur genelde.' },
+      { from: 'Solenoid − ucu', to: '12V adaptör · − (yeşil terminal)', wire: 'black', wireLabel: 'siyah', note: 'Devreyi kapatır. Bu kablo olmadan akım dönemez, solenoid çekemez.' },
+      { from: '1N4007 diyot · banded uç (katot)', to: 'Solenoid + ucu (paralel)', wire: 'orange', wireLabel: 'diyot katot', note: 'BAND YÖNÜ KRİTİK. Bant + tarafında olacak. Ters takılırsa adaptör kısa devre olur.' },
+      { from: '1N4007 diyot · düz uç (anot)', to: 'Solenoid − ucu (paralel)', wire: 'orange', wireLabel: 'diyot anot', note: 'Bantsız uç. Aynı vida altına solenoid − kablosu ile birlikte sokuluyor.' },
+    ],
+    code: {
+      file: 'unlock_test.py',
+      content: `from gpiozero import OutputDevice
+from time import sleep
+
+relay = OutputDevice(18, active_high=False, initial_value=False)
+
+print("3 saniye sonra UNLOCK...")
+sleep(3)
+
+# unlock — solenoid çekmeli, pim içeri
+relay.on()
+print(">>> UNLOCK — pim içeride")
+sleep(2)
+
+# lock — solenoid bırakmalı, yay pimi geri fırlatır
+relay.off()
+print(">>> LOCK — pim dışarıda")
+sleep(1)
+
+relay.close()
+print("Test bitti.")`
+    },
+    checks: [
+      { title: 'Adaptör prize takıldığında SESSİZLİK', detail: 'Hiçbir tıkırtı, kıvılcım, koruma kapanması olmamalı. Olduysa diyot ters veya kısa devre var, hemen prizden çek.' },
+      { title: 'relay.on() → KLİK + TAK', detail: 'Önce röle klik atar, sonra anlık olarak solenoid pimini içeri çeker. İki ayrı ses, biri mekanik kontak biri manyetik çekme.' },
+      { title: 'Pim 2 saniye boyunca içeride kalıyor', detail: 'Solenoid akım çektiği sürece pim çekili. Eline al, pimin pozisyonunu hisset.' },
+      { title: 'relay.off() → KLİK + TIK', detail: 'Röle bırakır, ardından yay pimi geri fırlatır. Fail-secure: enerji yokken kilitli.' },
+      { title: 'Solenoid hafif ısınıyor', detail: 'Bobin akım çekiyor, az ısınma normal. Ama 5+ saniyeden uzun sürmesin — kontinü çalışma için tasarlanmamış.' },
+    ],
+    troubleshoot: [
+      { symptom: 'Adaptör prize takıldığı an solenoid çekiyor', fix: 'NO yerine NC bağladın veya kabloları karıştırdın. Sadece COM ve NO kullan, NC boş.' },
+      { symptom: 'Adaptör prize takıldığında patlama/kıvılcım/koruma', fix: 'DİYOT TERS TAKILI — anında prizden çek. Diyodu çevir, banded uç + tarafında olacak.' },
+      { symptom: 'Röle klik atıyor ama solenoid hareketsiz', fix: '12V hattı kopuk. COM, NO, solenoid + ve − bağlantılarını sırayla kontrol et. Vidalar sıkı mı?' },
+      { symptom: 'Solenoid çok zayıf çekiyor, tam kapatamıyor', fix: 'Adaptör 9V veya altıdır. Etikete tekrar bak. 12V şart.' },
+      { symptom: 'Solenoid çekiyor ama bırakmıyor', fix: 'Mekanik takılma olabilir. Pimi elle yumuşakça itip-çekerek serbest hareket ettiğinden emin ol.' },
+      { symptom: 'Röle vızlama sesi çıkarıyor (klik değil)', fix: '5V besleme yetersiz. Pi USB-C adaptörü 3A mı kontrol et.' },
+    ]
+  },
+
+  5: {
+    title: 'status göstergeleri',
+    tag: 'sonra · UX katmanı',
+    desc: 'Yeşil LED = açık, kırmızı LED = kilitli, buzzer = onay sesi. Kullanıcının sistemi anlamasını sağlayan katman.',
+    activePins: [11, 13, 15, 6],
+    placeholder: true,
+  },
+};
+
+// ====================================================================
+// SVG COMPONENT TEMPLATES — visual building blocks
+// ====================================================================
+const COMPONENTS = {
+  pi: (x, y, label = 'Raspberry Pi 4') => `
+    <rect class="c-box c-box-pi" x="${x}" y="${y}" width="120" height="160" rx="6"/>
+    <text class="c-label-bold" x="${x + 60}" y="${y + 22}" text-anchor="middle">${label}</text>
+    <text class="c-label-mute" x="${x + 60}" y="${y + 38}" text-anchor="middle">GPIO header</text>
+  `,
+  relay: (x, y) => `
+    <rect class="c-box c-box-relay" x="${x}" y="${y}" width="180" height="240" rx="6"/>
+    <text class="c-label-bold" x="${x + 90}" y="${y + 24}" text-anchor="middle">Röle modülü</text>
+    <text class="c-label-mute" x="${x + 90}" y="${y + 40}" text-anchor="middle">JQC-3FF-S-Z · 5V</text>
+    <!-- screw terminals top -->
+    <rect class="term-screw" x="${x + 18}" y="${y + 60}" width="44" height="32" rx="2"/>
+    <rect class="term-screw" x="${x + 68}" y="${y + 60}" width="44" height="32" rx="2"/>
+    <rect class="term-screw" x="${x + 118}" y="${y + 60}" width="44" height="32" rx="2"/>
+    <circle cx="${x + 40}" cy="${y + 76}" r="3" fill="#3a3a44"/>
+    <circle cx="${x + 90}" cy="${y + 76}" r="3" fill="#3a3a44"/>
+    <circle cx="${x + 140}" cy="${y + 76}" r="3" fill="#3a3a44"/>
+    <text class="c-label-bold" x="${x + 40}" y="${y + 108}" text-anchor="middle">NC</text>
+    <text class="c-label-bold" x="${x + 90}" y="${y + 108}" text-anchor="middle">COM</text>
+    <text class="c-label-bold" x="${x + 140}" y="${y + 108}" text-anchor="middle">NO</text>
+    <!-- power LED -->
+    <circle cx="${x + 30}" cy="${y + 140}" r="4" fill="#c64545" opacity="0.9"/>
+    <text class="c-label-mute" x="${x + 38}" y="${y + 144}">PWR</text>
+    <!-- control pins bottom -->
+    <rect class="term-screw" x="${x + 50}" y="${y + 200}" width="80" height="22" rx="2"/>
+    <circle cx="${x + 65}" cy="${y + 211}" r="2.5" class="pin-dot pin-dot-power"/>
+    <circle cx="${x + 90}" cy="${y + 211}" r="2.5" class="pin-dot pin-dot-gnd"/>
+    <circle cx="${x + 115}" cy="${y + 211}" r="2.5" class="pin-dot pin-dot-gpio"/>
+    <text class="c-label-mute" x="${x + 65}" y="${y + 234}" text-anchor="middle">VCC</text>
+    <text class="c-label-mute" x="${x + 90}" y="${y + 234}" text-anchor="middle">GND</text>
+    <text class="c-label-mute" x="${x + 115}" y="${y + 234}" text-anchor="middle">IN</text>
+  `,
+  adapter12v: (x, y) => `
+    <rect class="c-box c-box-power" x="${x}" y="${y}" width="130" height="80" rx="6"/>
+    <text class="c-label-bold" x="${x + 65}" y="${y + 24}" text-anchor="middle">12V Adaptör</text>
+    <text class="c-label-mute" x="${x + 65}" y="${y + 40}" text-anchor="middle">Yeşil terminal</text>
+    <rect class="term-screw" x="${x + 20}" y="${y + 50}" width="36" height="22" rx="2"/>
+    <rect class="term-screw" x="${x + 74}" y="${y + 50}" width="36" height="22" rx="2"/>
+    <circle cx="${x + 38}" cy="${y + 61}" r="3" fill="#c64545"/>
+    <circle cx="${x + 92}" cy="${y + 61}" r="3" fill="#5a5852"/>
+    <text class="c-label-power" x="${x + 38}" y="${y + 88}" text-anchor="middle">+ 12V</text>
+    <text class="c-label-gnd" x="${x + 92}" y="${y + 88}" text-anchor="middle">GND</text>
+  `,
+  solenoid: (x, y) => `
+    <rect class="c-box c-box-load" x="${x}" y="${y}" width="130" height="100" rx="6"/>
+    <text class="c-label-bold" x="${x + 65}" y="${y + 24}" text-anchor="middle">Solenoid</text>
+    <text class="c-label-mute" x="${x + 65}" y="${y + 40}" text-anchor="middle">DC 12V kilit</text>
+    <!-- coil illustration -->
+    <g transform="translate(${x + 30}, ${y + 56})">
+      <path d="M 0 8 Q 8 0 16 8 Q 24 16 32 8 Q 40 0 48 8 Q 56 16 64 8" fill="none" stroke="#c64545" stroke-width="1.5"/>
+    </g>
+    <circle cx="${x + 30}" cy="${y + 86}" r="3" fill="#d85a30"/>
+    <circle cx="${x + 100}" cy="${y + 86}" r="3" fill="#5a5852"/>
+    <text class="c-label-power" x="${x + 30}" y="${y + 106}" text-anchor="middle">+</text>
+    <text class="c-label-gnd" x="${x + 100}" y="${y + 106}" text-anchor="middle">−</text>
+  `,
+  diode: (x, y, label = '1N4007') => `
+    <g transform="translate(${x}, ${y})">
+      <line x1="0" y1="0" x2="22" y2="0" stroke="#5a5852" stroke-width="1.5"/>
+      <polygon points="22,-7 22,7 36,0" fill="#888780"/>
+      <line x1="36" y1="-8" x2="36" y2="8" stroke="#ffb86b" stroke-width="2.5"/>
+      <line x1="36" y1="0" x2="58" y2="0" stroke="#5a5852" stroke-width="1.5"/>
+      <text class="c-label-mute" x="0" y="22" font-size="9">anot</text>
+      <text class="c-label-amber" x="36" y="22" text-anchor="middle" font-size="9">▮katot</text>
+      <text class="c-label-mute" x="29" y="-12" text-anchor="middle">${label}</text>
+    </g>
+  `,
+  led: (x, y, color = '#34c759', label = 'LED') => `
+    <g transform="translate(${x}, ${y})">
+      <circle cx="0" cy="0" r="9" fill="${color}" opacity="0.7" stroke="${color}" stroke-width="0.5"/>
+      <circle cx="0" cy="0" r="4" fill="${color}" opacity="1"/>
+      <line x1="-3" y1="9" x2="-3" y2="22" stroke="#888780" stroke-width="1.2"/>
+      <line x1="3" y1="9" x2="3" y2="28" stroke="#888780" stroke-width="1.2"/>
+      <text class="c-label-mute" x="-3" y="36" text-anchor="middle" font-size="9">K</text>
+      <text class="c-label-mute" x="3" y="42" text-anchor="middle" font-size="9">A</text>
+      <text class="c-label-mute" x="14" y="-2" font-size="9">${label}</text>
+    </g>
+  `,
+  resistor: (x, y, value = '220Ω') => `
+    <g transform="translate(${x}, ${y})">
+      <line x1="0" y1="0" x2="10" y2="0" stroke="#5a5852" stroke-width="1.5"/>
+      <rect x="10" y="-5" width="40" height="10" fill="#888780" rx="2"/>
+      <rect x="14" y="-5" width="2" height="10" fill="#c64545"/>
+      <rect x="18" y="-5" width="2" height="10" fill="#c64545"/>
+      <rect x="24" y="-5" width="2" height="10" fill="#88542a"/>
+      <rect x="42" y="-5" width="2" height="10" fill="#d4b13a"/>
+      <line x1="50" y1="0" x2="60" y2="0" stroke="#5a5852" stroke-width="1.5"/>
+      <text class="c-label-mute" x="30" y="-10" text-anchor="middle" font-size="9">${value}</text>
+    </g>
+  `,
+  pinPort: (x, y, label, gpioNum, type = 'gpio') => {
+    const dotClass = type === 'power' ? 'pin-dot-power' : type === 'gnd' ? 'pin-dot-gnd' : 'pin-dot-gpio';
+    return `
+      <circle cx="${x}" cy="${y}" r="4" class="pin-dot ${dotClass}"/>
+      <text class="c-label" x="${x - 10}" y="${y + 4}" text-anchor="end">${label}</text>
+      ${gpioNum ? `<text class="c-label-mute" x="${x - 10}" y="${y + 16}" text-anchor="end" font-size="9">${gpioNum}</text>` : ''}
+    `;
+  }
+};
+
+// ====================================================================
+// RENDER PIN GRID
+// ====================================================================
+function renderPins() {
+  const grid = document.getElementById('pin-grid');
+  grid.innerHTML = '';
+
+  for (let i = 0; i < 40; i += 2) {
+    const left = PINS[i];
+    const right = PINS[i + 1];
+
+    const lCell = document.createElement('div');
+    lCell.className = 'pin-cell left';
+    lCell.dataset.type = left[2];
+    lCell.dataset.pin = left[0];
+    lCell.innerHTML = `<span class="label">${left[1]}</span><span class="num">${left[0]}</span><span class="dot"></span>`;
+    lCell.addEventListener('click', () => selectPin(left[0]));
+
+    const divider = document.createElement('div');
+    divider.className = 'pin-divider';
+
+    const rCell = document.createElement('div');
+    rCell.className = 'pin-cell right';
+    rCell.dataset.type = right[2];
+    rCell.dataset.pin = right[0];
+    rCell.innerHTML = `<span class="label">${right[1]}</span><span class="num">${right[0]}</span><span class="dot"></span>`;
+    rCell.addEventListener('click', () => selectPin(right[0]));
+
+    grid.appendChild(lCell);
+    grid.appendChild(divider);
+    grid.appendChild(rCell);
+  }
+}
+
+// ====================================================================
+// PIN SELECTION + INFO
+// ====================================================================
+let selectedPin = null;
+
+function selectPin(pinNum) {
+  document.querySelectorAll('.pin-cell.selected').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll(`.pin-cell[data-pin="${pinNum}"]`).forEach(c => c.classList.add('selected'));
+  selectedPin = pinNum;
+
+  const pin = PINS[pinNum - 1];
+  const role = PIN_ROLES[pinNum];
+  const info = document.getElementById('pin-info');
+
+  let roleHTML;
+  if (role) {
+    roleHTML = `<div class="info-role"><strong>${role.use}</strong> — ${role.detail}</div>`;
+  } else if (pin[2] === 'power') {
+    roleHTML = `<div class="info-role"><strong>Power rail</strong> — ${pin[1]} sürekli, doğrudan SoC regülatöründen.</div>`;
+  } else if (pin[2] === 'gnd') {
+    roleHTML = `<div class="info-role"><strong>Ground</strong> — ortak toprak. Tüm GND pinleri Pi içinde birbirine bağlı.</div>`;
+  } else {
+    roleHTML = `<div class="info-unused">Bu projede henüz kullanılmıyor — yedek GPIO.</div>`;
+  }
+
+  const typeLabel = pin[2] === 'power' ? 'POWER' : pin[2] === 'gnd' ? 'GROUND' : 'GPIO';
+
+  info.innerHTML = `
+    <div class="info-pin">
+      <span class="num">Pin ${pin[0]}</span>
+      <span class="lbl">${pin[1]}</span>
+      <span class="typ">${typeLabel}</span>
+    </div>
+    ${roleHTML}
+  `;
+}
+
+// ====================================================================
+// HIGHLIGHT ACTIVE PINS FOR CURRENT STEP
+// ====================================================================
+function highlightActivePins(pinList) {
+  document.querySelectorAll('.pin-cell.active').forEach(c => c.classList.remove('active'));
+  pinList.forEach(p => {
+    document.querySelectorAll(`.pin-cell[data-pin="${p}"]`).forEach(c => c.classList.add('active'));
+  });
+}
+
+// ====================================================================
+// SYNTAX HIGHLIGHT — minimal Python
+// ====================================================================
+function highlightPython(code) {
+  return code
+    .replace(/(#[^\n]*)/g, '<span class="com">$1</span>')
+    .replace(/\b(from|import|for|in|range|while|if|else)\b/g, '<span class="kw">$1</span>')
+    .replace(/\b(LED|sleep|range)\b/g, '<span class="fn">$1</span>')
+    .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="num">$1</span>');
+}
+
+// ====================================================================
+// RENDER STEP
+// ====================================================================
+function renderStep(stepNum) {
+  const step = STEPS[stepNum];
+  const panel = document.getElementById('step-panel');
+
+  if (!step) {
+    panel.innerHTML = `<div class="placeholder"><div class="ph-num">${String(stepNum).padStart(2, '0')}</div><p>Bu adım henüz yok.</p></div>`;
+    highlightActivePins([]);
+    return;
+  }
+
+  if (step.placeholder) {
+    panel.innerHTML = `
+      <div class="step-head">
+        <span class="num">${String(stepNum).padStart(2, '0')}</span>
+        <div>
+          <div class="tag">${step.tag}</div>
+          <h1>${step.title}</h1>
+          <p class="desc">${step.desc}</p>
+        </div>
+      </div>
+      <div class="placeholder">
+        <div class="ph-num">${String(stepNum).padStart(2, '0')}</div>
+        <p>Bu adımın detaylı kablolama planı, Adım ${stepNum - 1} doğrulandığında buraya gelecek.</p>
+        <div class="ph-soon">soon</div>
+      </div>
+    `;
+    highlightActivePins(step.activePins || []);
+    return;
+  }
+
+  let wiringHTML = '';
+  step.wiring.forEach(w => {
+    wiringHTML += `
+      <li>
+        <div>
+          <div class="conn">
+            <span class="from">${w.from}</span>
+            <span class="arrow">→</span>
+            <span class="to">${w.to}</span>
+            <span class="wire ${w.wire}">${w.wireLabel}</span>
+          </div>
+          ${w.note ? `<div class="note">${w.note}</div>` : ''}
+        </div>
+      </li>
+    `;
+  });
+
+  let checksHTML = '';
+  step.checks.forEach(c => {
+    checksHTML += `<li><div><b>${c.title}</b><span>${c.detail}</span></div></li>`;
+  });
+
+  let tsHTML = '<div class="head">belirti</div><div class="head">çözüm</div>';
+  step.troubleshoot.forEach(t => {
+    tsHTML += `<div><div class="symptom">${t.symptom}</div><div class="fix">${t.fix}</div></div>`;
+  });
+  // wrap as separate row pairs
+  let tsRowsHTML = '';
+  step.troubleshoot.forEach(t => {
+    tsRowsHTML += `<div><div class="symptom">${t.symptom}</div><div class="fix">${t.fix}</div></div>`;
+  });
+
+  panel.innerHTML = `
+    <div class="step-head">
+      <span class="num">${String(stepNum).padStart(2, '0')}</span>
+      <div>
+        <div class="tag">${step.tag}</div>
+        <h1>${step.title}</h1>
+        <p class="desc">${step.desc}</p>
+      </div>
+    </div>
+
+    ${step.diagram ? `
+      <div class="section-title">devre şeması</div>
+      <div class="circuit-frame">${step.diagram}</div>
+    ` : ''}
+
+    <div class="section-title">kablolama</div>
+    <ol class="wiring">${wiringHTML}</ol>
+
+    <div class="section-title">test kodu</div>
+    <div class="code-block">
+      <header>${step.code.file}</header>
+      <pre><code>${highlightPython(step.code.content)}</code></pre>
+    </div>
+
+    <div class="section-title">doğrulama kontrolleri</div>
+    <ul class="checks">${checksHTML}</ul>
+
+    <div class="section-title">sorun giderme</div>
+    <div class="troubleshoot">
+      <div><div class="head">belirti</div><div class="head">çözüm</div></div>
+      ${tsRowsHTML}
+    </div>
+  `;
+
+  highlightActivePins(step.activePins || []);
+}
+
+// ====================================================================
+// STEP SELECTOR
+// ====================================================================
+document.getElementById('step-selector').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn || btn.disabled) return;
+  document.querySelectorAll('.step-selector button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const step = parseInt(btn.dataset.step, 10);
+  renderStep(step);
+});
+
+// ====================================================================
+// INIT
+// ====================================================================
+renderPins();
+renderStep(4);
+// Update active button
+document.querySelectorAll('.step-selector button').forEach(b => b.classList.remove('active'));
+document.querySelector('.step-selector button[data-step="4"]').classList.add('active');
+</script>
+
+</body>
+</html>

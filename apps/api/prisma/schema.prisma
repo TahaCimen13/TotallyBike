@@ -18,14 +18,15 @@ model User {
 }
 
 model Station {
-  id         String @id @default(cuid())
+  id         String  @id @default(cuid())
   name       String
   latitude   Float
   longitude  Float
   totalSlots Int
+  dockId     String? @unique
   bikes      Bike[]
-  ridesStart Ride[] @relation("startStation")
-  ridesEnd   Ride[] @relation("endStation")
+  ridesStart Ride[]  @relation("startStation")
+  ridesEnd   Ride[]  @relation("endStation")
 }
 
 model Bike {

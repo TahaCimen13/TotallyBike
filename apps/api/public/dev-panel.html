@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PISI Dev Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #0d0d0d; color: #e0e0e0; padding: 24px; }
+    h1 { color: #10b981; font-size: 18px; margin-bottom: 20px; }
+    h2 { font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+    input { background: #111; border: 1px solid #333; color: #fff; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 13px; flex: 1; min-width: 160px; }
+    button { padding: 8px 16px; border: none; border-radius: 6px; font-family: monospace; font-size: 13px; cursor: pointer; white-space: nowrap; }
+    .btn-green { background: #10b981; color: #fff; }
+    .btn-red   { background: #ef4444; color: #fff; }
+    .btn-blue  { background: #3b82f6; color: #fff; }
+    .btn-gray  { background: #374151; color: #e5e7eb; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .log { background: #111; border: 1px solid #222; border-radius: 6px; padding: 12px; font-size: 12px; max-height: 220px; overflow-y: auto; }
+    .log p { margin-bottom: 4px; line-height: 1.4; }
+    .ok  { color: #10b981; }
+    .err { color: #ef4444; }
+    .inf { color: #60a5fa; }
+    .warn{ color: #f59e0b; }
+    .tag { color: #a78bfa; font-weight: bold; }
+    .bike-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+    .bike-card { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; }
+    .bike-card .qr { font-weight: bold; color: #fff; font-size: 13px; margin-bottom: 4px; }
+    .bike-card .meta { font-size: 11px; color: #666; margin-bottom: 8px; }
+    .status-available { color: #10b981; }
+    .status-in_use    { color: #f59e0b; }
+    .status-maintenance { color: #ef4444; }
+    .active-ride { background: #1c1a00; border: 1px solid #f59e0b44; border-radius: 8px; padding: 12px; }
+    .active-ride .title { color: #f59e0b; font-weight: bold; margin-bottom: 8px; }
+    #tokenDisplay { font-size: 11px; color: #555; word-break: break-all; margin-top: 6px; }
+    .station-select { background: #111; border: 1px solid #333; color: #fff; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>PISI Dev Panel</h1>
+
+  <!-- LOGIN -->
+  <div class="section">
+    <h2>Giriş</h2>
+    <div class="row">
+      <input id="email" value="test@pisi.com" placeholder="email">
+      <input id="password" type="password" value="123456" placeholder="şifre">
+      <button class="btn-green" onclick="login()">Giriş Yap</button>
+      <button class="btn-gray" onclick="logout()">Çıkış</button>
+    </div>
+    <div id="tokenDisplay">— henüz giriş yapılmadı —</div>
+  </div>
+
+  <!-- AKTİF SÜRÜŞ -->
+  <div class="section">
+    <h2>Aktif Sürüş</h2>
+    <div id="activeRideBox">
+      <button class="btn-blue" onclick="getActiveRide()">Yenile</button>
+    </div>
+  </div>
+
+  <!-- BİSİKLETLER -->
+  <div class="section">
+    <h2>İstasyon Bisikletleri</h2>
+    <div class="row">
+      <select id="stationFilter" class="station-select" onchange="loadBikes()">
+        <option value="">— istasyon seç —</option>
+      </select>
+      <button class="btn-gray" onclick="loadStations()">İstasyonları Yükle</button>
+    </div>
+    <div id="bikeGrid" class="bike-grid"></div>
+  </div>
+
+  <!-- LOG -->
+  <div class="section">
+    <h2>Log</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+<script>
+  const BASE = 'http://192.168.1.11:3001';
+  let token = localStorage.getItem('devToken') || null;
+  let stations = [];
+
+  // ── log ──────────────────────────────────────
+  function log(msg, cls = 'inf') {
+    const el = document.getElementById('log');
+    const p = document.createElement('p');
+    const ts = new Date().toLocaleTimeString('tr');
+    p.innerHTML = `<span class="tag">[${ts}]</span> <span class="${cls}">${msg}</span>`;
+    el.prepend(p);
+  }
+
+  // ── api helper ────────────────────────────────
+  async function api(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${BASE}${path}`, { ...opts, headers });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  }
+
+  // ── auth ──────────────────────────────────────
+  async function login() {
+    const email = document.getElementById('email').value;
+    const pass  = document.getElementById('password').value;
+    log(`POST /api/auth/login → ${email}`);
+    const r = await api('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password: pass }),
+    });
+    if (r.ok && r.data.success) {
+      token = r.data.data.accessToken;
+      localStorage.setItem('devToken', token);
+      const u = r.data.data.user;
+      log(`Giriş OK — ${u.name} | Bakiye: ${u.balance} TL`, 'ok');
+      document.getElementById('tokenDisplay').textContent = token.slice(0, 60) + '...';
+      await loadStations();
+      await getActiveRide();
+    } else {
+      log(`Giriş HATA: ${r.data.error || r.status}`, 'err');
+    }
+  }
+
+  function logout() {
+    token = null;
+    localStorage.removeItem('devToken');
+    document.getElementById('tokenDisplay').textContent = '— çıkış yapıldı —';
+    log('Çıkış yapıldı', 'warn');
+  }
+
+  // ── aktif sürüş ───────────────────────────────
+  async function getActiveRide() {
+    const r = await api('/api/rides/active');
+    const box = document.getElementById('activeRideBox');
+    if (r.ok && r.data.data) {
+      const ride = r.data.data;
+      const start = new Date(ride.startTime).toLocaleTimeString('tr');
+      const mins = Math.ceil((Date.now() - new Date(ride.startTime)) / 60000);
+      log(`Aktif sürüş: ${ride.id.slice(0,8)}... | Bisiklet: ${ride.bike.qrCode} | ${mins} dk`, 'warn');
+      box.innerHTML = `
+        <div class="active-ride">
+          <div class="title">Aktif Sürüş</div>
+          <div style="font-size:12px; color:#ccc; margin-bottom:10px;">
+            ID: ${ride.id.slice(0,12)}...<br>
+            Bisiklet: <b>${ride.bike.qrCode}</b><br>
+            Başlangıç: ${start} (${mins} dk)<br>
+            İstasyon: ${ride.startStation?.name || '—'}
+          </div>
+          <div class="row">
+            <span style="font-size:12px;color:#888;">Parkla:</span>
+            <select id="endStationSel" class="station-select">${stations.map(s =>
+              `<option value="${s.id}">${s.name} (dock ${s.dockId})</option>`).join('')}
+            </select>
+            <button class="btn-red" onclick="endRide('${ride.id}')">Sürüşü Bitir</button>
+          </div>
+        </div>`;
+    } else {
+      log('Aktif sürüş yok', 'inf');
+      box.innerHTML = `<span style="color:#555; font-size:13px;">Aktif sürüş yok</span>
+        <button class="btn-blue" style="margin-left:10px;" onclick="getActiveRide()">Yenile</button>`;
+    }
+  }
+
+  async function endRide(rideId) {
+    const sel = document.getElementById('endStationSel');
+    const stationId = sel ? sel.value : stations[0]?.id;
+    if (!stationId) { log('İstasyon seç!', 'err'); return; }
+    log(`POST /api/rides/${rideId.slice(0,8)}.../end`);
+    const r = await api(`/api/rides/${rideId}/end`, {
+      method: 'POST',
+      body: JSON.stringify({ stationId }),
+    });
+    if (r.ok && r.data.success) {
+      log(`Sürüş bitti — Ücret: ${r.data.data.cost} TL`, 'ok');
+      await getActiveRide();
+      await loadBikes();
+    } else {
+      log(`Sürüş bitirme HATA: ${r.data.error || r.status}`, 'err');
+    }
+  }
+
+  // ── istasyonlar ───────────────────────────────
+  async function loadStations() {
+    const r = await api('/api/stations');
+    if (r.ok && r.data.data) {
+      stations = r.data.data;
+      const sel = document.getElementById('stationFilter');
+      sel.innerHTML = '<option value="">— istasyon seç —</option>' +
+        stations.map(s => `<option value="${s.id}">${s.name} (dock ${s.dockId})</option>`).join('');
+      log(`${stations.length} istasyon yüklendi`, 'ok');
+    }
+  }
+
+  // ── bisikletler ───────────────────────────────
+  async function loadBikes() {
+    const stationId = document.getElementById('stationFilter').value;
+    if (!stationId) return;
+    const station = stations.find(s => s.id === stationId);
+    const r = await api(`/api/stations/${stationId}`);
+    if (!r.ok || !r.data.data) { log('Bisikletler yüklenemedi', 'err'); return; }
+
+    const bikes = r.data.data.bikes || [];
+    log(`${bikes.length} bisiklet — ${station?.name}`, 'inf');
+    const grid = document.getElementById('bikeGrid');
+    if (bikes.length === 0) {
+      grid.innerHTML = '<span style="color:#555;font-size:13px;">Bu istasyonda bisiklet yok</span>';
+      return;
+    }
+    grid.innerHTML = bikes.map(b => `
+      <div class="bike-card">
+        <div class="qr">${b.qrCode}</div>
+        <div class="meta status-${b.status}">${statusLabel(b.status)} · %${b.batteryLevel}</div>
+        ${b.status === 'available'
+          ? `<button class="btn-green" style="width:100%;font-size:12px;" onclick="unlockBike('${b.id}','${b.qrCode}')">Kilidi Aç</button>`
+          : `<button class="btn-gray" style="width:100%;font-size:12px;" disabled>${statusLabel(b.status)}</button>`}
+      </div>`).join('');
+  }
+
+  function statusLabel(s) {
+    return s === 'available' ? 'Müsait' : s === 'in_use' ? 'Kullanımda' : 'Bakımda';
+  }
+
+  // ── unlock ─────────────────────────────────────
+  async function unlockBike(bikeId, qr) {
+    log(`POST /api/bikes/${qr}/unlock`);
+    const r = await api(`/api/bikes/${bikeId}/unlock`, { method: 'POST' });
+    if (r.ok && r.data.success) {
+      log(`Kilit açıldı! Sürüş: ${r.data.data.id.slice(0,8)}... → MQTT → Pi`, 'ok');
+      await getActiveRide();
+      await loadBikes();
+    } else {
+      log(`Unlock HATA: ${r.data.error || r.status}`, 'err');
+    }
+  }
+
+  // ── init ──────────────────────────────────────
+  if (token) {
+    document.getElementById('tokenDisplay').textContent = token.slice(0,60) + '...';
+    log('Önceki oturum bulundu, yükleniyor...', 'warn');
+    loadStations().then(() => getActiveRide());
+  }
+</script>
+</body>
+</html>

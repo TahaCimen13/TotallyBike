@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma, io } from '../index';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { PRICING, SOCKET_EVENTS } from '@totallybike/shared';
+import { publishUnlock } from '../lib/mqtt';
 
 export const bikesRouter = Router();
 
@@ -95,6 +96,17 @@ bikesRouter.post('/:id/unlock', authMiddleware, async (req: AuthRequest, res, ne
         data: { balance: { decrement: PRICING.UNLOCK_FEE } },
       }),
     ]);
+
+    const stationForUnlock = await prisma.station.findUnique({
+      where: { id: stationId },
+    });
+    if (stationForUnlock?.dockId) {
+      try {
+        await publishUnlock(stationForUnlock.dockId, ride.id);
+      } catch (err) {
+        console.error('[Unlock] MQTT publish failed for ride', ride.id, err);
+      }
+    }
 
     // Emit realtime events
     io.emit(SOCKET_EVENTS.RIDE_STARTED, { rideId: ride.id });

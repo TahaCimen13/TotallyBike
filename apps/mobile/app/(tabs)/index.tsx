@@ -190,6 +190,26 @@ export default function MapScreen() {
             <Text style={styles.rideCardInfo}>Batarya: {activeRide.bike.batteryLevel}%</Text>
             <Text style={styles.rideCardInfo}>Başlangıç: {activeRide.startStation.name}</Text>
           </View>
+          <TouchableOpacity
+            style={styles.endRideBtn}
+            onPress={() => {
+              Alert.alert(
+                'Sürüşü Bitir',
+                'Hangi istasyona bırakıyorsunuz?',
+                [
+                  { text: 'İptal', style: 'cancel' },
+                  ...stations
+                    .filter(s => s.availableDocks > 0)
+                    .map(s => ({
+                      text: `${s.name} (${s.availableDocks} dock)`,
+                      onPress: () => endRide(s.id),
+                    })),
+                ]
+              );
+            }}
+          >
+            <Text style={styles.endRideBtnText}>Bisikleti Bırak</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -241,6 +261,14 @@ const styles = StyleSheet.create({
   timerText: { color: '#fff', fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },
   rideCardBottom: { flexDirection: 'row', justifyContent: 'space-between' },
   rideCardInfo: { color: '#888', fontSize: 13 },
+  endRideBtn: {
+    marginTop: 12,
+    backgroundColor: '#ef4444',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  endRideBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   scanButton: {
     position: 'absolute', bottom: 32, left: 16, right: 16,
     backgroundColor: '#10b981', paddingVertical: 18, borderRadius: 14,

@@ -1,0 +1,300 @@
+import os
+
+# Define the HTML content
+html_content = """<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PISI Dock - Mekanik Simülasyon</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        canvas {
+            border: 2px solid #333;
+            border-radius: 8px;
+            background-color: #fafafa;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+        input[type="range"] {
+            width: 300px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        .status {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .locked { color: #dc3545; }
+        .unlocked { color: #28a745; }
+        .timer { color: #ff8c00; font-size: 14px; }
+        .info {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+            max-width: 500px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚲 PISI Dock Mekanik Simülasyon</h1>
+    
+    <canvas id="simCanvas" width="600" height="300"></canvas>
+
+    <div class="controls">
+        <label for="hookSlider">Bisikleti İt / Çek:</label>
+        <input type="range" id="hookSlider" min="0" max="400" value="400">
+        
+        <button id="unlockBtn" disabled>SİSTEMDEN KİLİDİ AÇ (12V Solenoid)</button>
+        
+        <div id="statusText" class="status unlocked">Durum: Bekleniyor</div>
+        <div id="timerText" class="timer"></div>
+    </div>
+
+    <div class="info">
+        <strong>Nasıl Çalışır?</strong><br>
+        1. Slider'ı sola kaydırarak bisikleti dock'a itin.<br>
+        2. Kanca açılı pime çarptığında pimi yukarı iter (yay sıkışır).<br>
+        3. Delik hizalandığında pim aşağı fırlar (Kilitlenir).<br>
+        4. Kilidi açtığınızda solenoid pimi 5 saniye boyunca yukarıda tutar.
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const slider = document.getElementById('hookSlider');
+    const unlockBtn = document.getElementById('unlockBtn');
+    const statusText = document.getElementById('statusText');
+    const timerText = document.getElementById('timerText');
+
+    // Durum Değişkenleri
+    let hookX = 400; // Başlangıç pozisyonu (sağda)
+    let pinY = 0;    // Pimin dikey pozisyonu (0: en aşağıda)
+    let isLocked = false;
+    let isSolenoidActive = false;
+    let unlockTimer = 0;
+
+    // Sabitler
+    const pinX = 150;     // Pimin yatay yeri
+    const holePos = 110;  // Kancadaki deliğin kanca ucuna mesafesi
+    const pinWidth = 20;
+    const pinMaxLift = 40;
+
+    function update() {
+        hookX = parseInt(slider.value);
+
+        // Kilit mekanizması kontrolü
+        // Kancanın ucu pime temas ediyor mu?
+        const hookFrontX = hookX;
+        const hookHoleCenterX = hookX + 45; // Deliğin merkezi
+
+        if (!isSolenoidActive) {
+            // Eğer solenoid aktif değilse, kanca pimi itebilir
+            if (hookFrontX < pinX + pinWidth && hookFrontX + 80 > pinX) {
+                // Kancanın eğimli kısmı pime çarpıyor mu?
+                if (hookFrontX < pinX + pinWidth && hookFrontX > pinX - 30) {
+                    // Pimi kademeli olarak yukarı kaldır (eğim efekti)
+                    pinY = Math.max(0, pinMaxLift - (hookFrontX - pinX + 10));
+                    pinY = Math.min(pinY, pinMaxLift);
+                } else {
+                    pinY = 0;
+                }
+
+                // Tam deliğe düşme kontrolü
+                if (Math.abs(hookHoleCenterX - (pinX + pinWidth/2)) < 5) {
+                    pinY = 0;
+                    if (!isLocked) {
+                        isLocked = true;
+                        statusText.innerText = "Durum: KİLİTLENDİ!";
+                        statusText.className = "status locked";
+                        unlockBtn.disabled = false;
+                    }
+                }
+            } else {
+                pinY = 0;
+            }
+        } else {
+            // Solenoid aktifse pim her zaman yukarıdadır
+            pinY = pinMaxLift;
+        }
+
+        // Eğer kilitliyse ve solenoid aktif değilse slider hareketini kısıtla
+        if (isLocked && !isSolenoidActive) {
+            slider.value = pinX + pinWidth/2 - 45; 
+            hookX = parseInt(slider.value);
+        }
+
+        draw();
+        requestAnimationFrame(update);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // --- Zemin ---
+        ctx.strokeStyle = "#999";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 250);
+        ctx.lineTo(600, 250);
+        ctx.stroke();
+
+        // --- DOCK Yapısı (Sabit) ---
+        ctx.fillStyle = "#3b82f6";
+        ctx.fillRect(50, 50, 150, 40); // Üst kol
+        ctx.fillRect(50, 50, 40, 200); // Ana gövde
+
+        // --- Yay ve Pim (Solenoid) ---
+        const pinDrawY = 90 - pinY;
+        
+        // Yay çizimi
+        ctx.strokeStyle = "#555";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for(let i=0; i<10; i++) {
+            ctx.lineTo(pinX + (i%2==0 ? 5 : 15), 60 + (i * (pinDrawY-60)/10));
+        }
+        ctx.stroke();
+
+        // Pim Gövdesi
+        ctx.fillStyle = isSolenoidActive ? "#fbbf24" : "#dc2626";
+        ctx.fillRect(pinX, pinDrawY, pinWidth, 60);
+        
+        // AÇILI UÇ (En önemli kısım)
+        ctx.beginPath();
+        ctx.moveTo(pinX, pinDrawY + 60);
+        ctx.lineTo(pinX + pinWidth, pinDrawY + 60);
+        ctx.lineTo(pinX + pinWidth, pinDrawY + 80); // Eğimli uç sağda aşağıda
+        ctx.closePath();
+        ctx.fill();
+
+        // --- BİSİKLET KANCASI (Hareketli) ---
+        ctx.fillStyle = "#facc15";
+        ctx.strokeStyle = "#a16207";
+        ctx.lineWidth = 3;
+        
+        // Kanca Ana Gövde
+        const hookY = 145;
+        ctx.beginPath();
+        ctx.moveTo(hookX + 90, hookY); // Arka
+        ctx.lineTo(hookX + 30, hookY); // Ön üst
+        ctx.lineTo(hookX, hookY + 30);  // ÖN EĞİM (Pime çarpan yer)
+        ctx.lineTo(hookX + 90, hookY + 30); // Alt
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // KİLİT DELİĞİ (Görsel temsil)
+        ctx.fillStyle = "#fafafa";
+        ctx.beginPath();
+        ctx.arc(hookX + 45, hookY + 15, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Tekerlek Temsili
+        ctx.strokeStyle = "#333";
+        ctx.beginPath();
+        ctx.arc(hookX + 130, 200, 50, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Etiketler
+        ctx.fillStyle = "#333";
+        ctx.font = "12px Arial";
+        ctx.fillText("SOLENOID PİMİ (Eğimli)", pinX - 20, 40);
+        ctx.fillText("BİSİKLET KANCASI", hookX + 10, hookY - 10);
+    }
+
+    // Kilidi Açma İşlemi
+    unlockBtn.onclick = () => {
+        if (isLocked) {
+            isSolenoidActive = true;
+            statusText.innerText = "Durum: Sinyal Gönderildi (Açık)";
+            statusText.className = "status unlocked";
+            
+            let timeLeft = 5;
+            timerText.innerText = "Kilit " + timeLeft + " sn sonra tekrar kapanacak...";
+            
+            const interval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft > 0) {
+                    timerText.innerText = "Kilit " + timeLeft + " sn sonra tekrar kapanacak...";
+                } else {
+                    timerText.innerText = "";
+                    clearInterval(interval);
+                }
+            }, 1000);
+
+            // 5 Saniye Bekle ve Pimi Bırak
+            setTimeout(() => {
+                isSolenoidActive = false;
+                // Eğer bisiklet hala oradaysa tekrar kilitlenir
+                const hookHoleCenterX = parseInt(slider.value) + 45;
+                if (Math.abs(hookHoleCenterX - (pinX + pinWidth/2)) < 10) {
+                    isLocked = true;
+                    statusText.innerText = "Durum: Tekrar KİLİTLENDİ!";
+                    statusText.className = "status locked";
+                } else {
+                    isLocked = false;
+                    statusText.innerText = "Durum: Bekleniyor";
+                    statusText.className = "status unlocked";
+                    unlockBtn.disabled = true;
+                }
+            }, 5000);
+        }
+    };
+
+    update();
+</script>
+
+</body>
+</html>
+"""
+
+# Save to a file
+file_path = "pisi_dock_simulasyon.html"
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print(f"File saved as {file_path}")

@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.2:3001';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.11:3001';
 
 async function getToken(): Promise<string | null> {
   try {
