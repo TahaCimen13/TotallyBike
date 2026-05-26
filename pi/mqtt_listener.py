@@ -8,6 +8,7 @@ Topics:
 import os
 import ssl
 import json
+import time
 import logging
 import signal
 from collections import deque
@@ -66,6 +67,8 @@ def on_disconnect(client, userdata, flags, reason_code, properties=None):
     log.warning("Disconnected: rc=%s — paho will auto-reconnect", reason_code)
 
 
+STARTUP_TIME = time.time()
+
 def on_message(client, userdata, msg):
     log.info("Message on %s: %s", msg.topic, msg.payload[:200])
     try:
@@ -73,6 +76,12 @@ def on_message(client, userdata, msg):
     except (ValueError, UnicodeDecodeError) as e:
         log.error("Invalid payload: %s", e)
         publish_status(client, "error", reason="invalid_payload")
+        return
+
+    # Eski mesajları reddet — bağlantıdan önce gönderilmişse yoksay
+    ts = payload.get("ts", 0) / 1000  # ms → s
+    if ts < STARTUP_TIME:
+        log.warning("Stale message (ts=%s < startup=%s), skipping", ts, STARTUP_TIME)
         return
 
     ride_id = str(payload.get("ride_id", "unknown"))
